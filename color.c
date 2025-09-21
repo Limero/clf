@@ -2,7 +2,7 @@
 
 #include <dirent.h>
 #define TB_IMPL
-#include "../include/termbox2.h"
+#include "termbox2.h"
 
 typedef const uint16_t color_t;
 
