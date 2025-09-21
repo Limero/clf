@@ -1,4 +1,5 @@
 # TODO
+* Tab characters in preview isn't working correctly
 * Prefix yanked files
 * Do more partial clearings instead full tb_clear()
 * Use int_digits helper in columns for dynamic line number width
