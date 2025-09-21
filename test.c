@@ -1,7 +1,7 @@
 #pragma once
 
 #define MUNIT_ENABLE_ASSERT_ALIASES
-#include "../include/munit.c"
+#include "include/munit.c"
 #include <sys/stat.h>
 
 #define TEST_SLEEP 100000 // 0.1s in microseconds
