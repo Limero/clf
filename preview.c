@@ -202,6 +202,43 @@ static void *preview_worker(void *arg) {
                 // Reset line buffer after printing newline-terminated line
                 line_len = 0;
                 pthread_mutex_unlock(&g_tb_mutex);
+              } else if (ch == '\t') {
+                // Expand tabs into spaces based on TAB_WIDTH and current column
+                for (;;) {
+                  size_t col_in_line = line_len % (size_t)preview_width;
+                  size_t spaces_to_next_tab = TAB_WIDTH - (col_in_line % TAB_WIDTH);
+                  size_t space_chunk = MIN(spaces_to_next_tab, (size_t)preview_width - col_in_line);
+                  // Append as many spaces as fit in this line chunk
+                  for (size_t s = 0; s < space_chunk; s++) {
+                    line_buf[line_len++] = ' ';
+                  }
+                  // If we filled the line, flush it and continue if there are remaining spaces
+                  if (line_len >= (size_t)preview_width) {
+                    pthread_mutex_lock(&g_tb_mutex);
+                    tb_printf(preview_x, y, COLOR_DEFAULT, COLOR_DEFAULT, "%-*.*s", preview_width, preview_width,
+                              line_buf);
+                    if (y == tb_height() - 2) {
+                      truncated = true;
+                      tb_present();
+                      pthread_mutex_unlock(&g_tb_mutex);
+                      goto cleanup_and_exit;
+                    }
+                    y++;
+                    lines_since_present++;
+                    if (lines_since_present >= 3 || y == 2) {
+                      tb_present();
+                      lines_since_present = 0;
+                    }
+                    pthread_mutex_unlock(&g_tb_mutex);
+
+                    line_len = 0;
+                    // Continue loop only if we didn't finish all spaces toward the next tab stop
+                    if (space_chunk < spaces_to_next_tab) {
+                      continue;
+                    }
+                  }
+                  break;
+                }
               } else {
                 // Append character and soft-wrap on the fly when reaching width
                 if (line_len < (size_t)preview_width) {
