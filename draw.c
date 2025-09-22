@@ -7,6 +7,7 @@
 #include "status.c"
 #include <assert.h>
 #include <dirent.h>
+#include <sys/stat.h>
 
 static int compare_dirs_first(const struct dirent **a, const struct dirent **b) {
   if ((*a)->d_type == DT_DIR && (*b)->d_type != DT_DIR) {
@@ -232,7 +233,10 @@ static void draw_right_column(const int offset_x, const int width) {
   }
 
   if (g_items_in_right_dir == 0) {
-    tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
+    struct stat st;
+    if (lstat(g_current_selection.name, &st) == 0 && S_ISDIR(st.st_mode)) {
+      tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
+    }
     return;
   }
 
