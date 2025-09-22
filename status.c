@@ -83,6 +83,6 @@ char *status_normal_string(const struct stat *st) {
   // e.g. "Fri Aug  1 23:01:46 2025"
   strftime(timestr, sizeof(timestr), "%a %b %e %H:%M:%S %Y", &tm);
 
-  sprintf(status_string, "%s %s %s %s %s", perms, uname, gname, hsize, timestr);
+  snprintf(status_string, sizeof(status_string), "%s %s %s %s %s", perms, uname, gname, hsize, timestr);
   return status_string;
 }
