@@ -6,6 +6,7 @@
 #include "preview.c"
 #include "status.c"
 #include <assert.h>
+#include <ctype.h>
 #include <dirent.h>
 #include <sys/stat.h>
 
@@ -60,6 +61,23 @@ void set_current_selection_idx_to_name(const char *name) {
       return;
     }
   }
+}
+
+// Since strcasestr is nonstandard, we always define our own
+char *strcasestr(const char *haystack, const char *needle) {
+  if (!*needle)
+    return (char *)haystack;
+  for (; *haystack; haystack++) {
+    const char *h = haystack;
+    const char *n = needle;
+    while (*n && *h && tolower((unsigned char)*h) == tolower((unsigned char)*n)) {
+      h++;
+      n++;
+    }
+    if (*n == '\0')
+      return (char *)haystack;
+  }
+  return NULL;
 }
 
 void set_current_selection_idx_to_search(const bool forward, const int start_idx) {
