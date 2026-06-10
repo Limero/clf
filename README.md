@@ -6,7 +6,7 @@ It offers the same core functionality and default keybinds as the other file man
 
 For terminal output it uses [termbox2](https://github.com/termbox/termbox2), a TUI library offering similar functionality to [ncurses](https://en.wikipedia.org/wiki/Ncurses) but more minimalistic.
 
-It supports moving/copying files between multiple instances of the program through named pipes, instead of using a client/server model like LF.
+It supports moving/copying files between multiple instances of the program through a shared temporary file, instead of using a client/server model like LF.
 
 ## Keybinds
 

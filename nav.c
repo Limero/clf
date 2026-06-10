@@ -219,8 +219,6 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     return 0;
   case 'p':
     copy_paste(g_cwd);
-    // TODO: Refresh when paste is actually done
-    usleep(500000);
     g_update.dir_left = true;
     g_update.dir_middle = true;
     g_update.dir_right = true;

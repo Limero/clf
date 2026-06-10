@@ -1,5 +1,4 @@
 # TODO
-* Fix copy tests sometimes failing
 * Prefix yanked files
 * Do more partial clearings instead full tb_clear()
 * Use int_digits helper in columns for dynamic line number width
@@ -12,8 +11,8 @@
 * Remember position in right column for all directories (it's currently reset when moving up/down)
 * Select new file/dir after touch/mkdir/etc.
 * Select files and copy/cut multiple
-* Investigate if creating symlinks in /tmp for copy/paste works better than named pipes
 * Show progress for copy/move
 * Tab completion for commands
 * Add tests for more core functionality
 * Other TODO comments around the codebase
+* Handle collision with existing files when pasting after copy/move

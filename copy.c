@@ -1,111 +1,94 @@
 #pragma once
 
 #include "os.c"
+#include <sys/file.h>
 
-static const char *NAMED_PIPE = "/tmp/clf-pipe";
-
-typedef struct {
-  char source_file_path[PATH_MAX];
-  bool delete_source_on_paste;
-} message_t;
+// Define so it can be overriden in tests to never touch main clipboard
+#ifndef CLIPBOARD_FILE
+#define CLIPBOARD_FILE "/tmp/clf-clipboard"
+#endif
 
 void copy_yank(const char *source_file_path, const bool delete_source_on_paste) {
-  int ret = mkfifo(NAMED_PIPE, 0666);
-  if (ret == -1) {
-    switch (errno) {
-    case EEXIST:
-      // TODO: drain any other pending copies
-      break;
-    default:
-      snprintf(g_msg, sizeof g_msg, "(%s mkfifo) %s", __func__, strerror(errno));
-      g_msg_type = MSG_TYPE_ERROR;
-      return;
-    }
-  }
-
-  const pid_t p = fork();
-  if (p == -1) {
-    snprintf(g_msg, sizeof g_msg, "(%s fork) %s", __func__, strerror(errno));
-    g_msg_type = MSG_TYPE_ERROR;
-    return;
-  }
-
-  if (p == 0) {
-    const int fd = open(NAMED_PIPE, O_WRONLY);
-    if (fd == -1) {
-      snprintf(g_msg, sizeof g_msg, "(%s open) %s", __func__, strerror(errno));
-      g_msg_type = MSG_TYPE_ERROR;
-      return;
-    }
-
-    message_t msg;
-    strlcpy(msg.source_file_path, source_file_path, PATH_MAX);
-    msg.delete_source_on_paste = delete_source_on_paste;
-    ret = write(fd, &msg, sizeof(msg));
-    if (ret == -1) {
-      snprintf(g_msg, sizeof g_msg, "(%s write) %s", __func__, strerror(errno));
-      g_msg_type = MSG_TYPE_ERROR;
-    }
-
-    ret = close(fd);
-    if (ret == -1) {
-      snprintf(g_msg, sizeof g_msg, "(%s close) %s", __func__, strerror(errno));
-      g_msg_type = MSG_TYPE_ERROR;
-    }
-    _exit(0);
-  }
-}
-
-void copy_paste(const char *target_dir_path) {
-  int ret = mkfifo(NAMED_PIPE, 0666);
-  if (ret == -1) {
-    switch (errno) {
-    case EEXIST:
-      break;
-    default:
-      snprintf(g_msg, sizeof g_msg, "(%s mkfifo) %s", __func__, strerror(errno));
-      g_msg_type = MSG_TYPE_ERROR;
-      return;
-    }
-  }
-
-  const int fd = open(NAMED_PIPE, O_RDONLY);
+  const int fd = open(CLIPBOARD_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666);
   if (fd == -1) {
     snprintf(g_msg, sizeof g_msg, "(%s open) %s", __func__, strerror(errno));
     g_msg_type = MSG_TYPE_ERROR;
     return;
   }
 
-  message_t msg;
-  ret = read(fd, &msg, sizeof(msg));
-  if (ret == -1) {
-    snprintf(g_msg, sizeof g_msg, "(%s read) %s", __func__, strerror(errno));
+  flock(fd, LOCK_EX);
+
+  char line[PATH_MAX + 6];
+  const int len = snprintf(line, sizeof line, "%s\n%s\n", delete_source_on_paste ? "move" : "copy", source_file_path);
+  if (write(fd, line, len) == -1) {
+    snprintf(g_msg, sizeof g_msg, "(%s write) %s", __func__, strerror(errno));
+    g_msg_type = MSG_TYPE_ERROR;
+  } else {
+    snprintf(g_msg, sizeof g_msg, "Yanked %s", source_file_path);
+    g_msg_type = MSG_TYPE_SUCCESS;
+  }
+
+  close(fd);
+}
+
+void copy_paste(const char *target_dir_path) {
+  const int fd = open(CLIPBOARD_FILE, O_RDONLY);
+  if (fd == -1) {
+    if (errno == ENOENT) {
+      snprintf(g_msg, sizeof g_msg, "No files in clipboard");
+      g_msg_type = MSG_TYPE_ERROR;
+    } else {
+      snprintf(g_msg, sizeof g_msg, "(%s open) %s", __func__, strerror(errno));
+      g_msg_type = MSG_TYPE_ERROR;
+    }
+    return;
+  }
+
+  flock(fd, LOCK_SH);
+
+  char buf[PATH_MAX + 6];
+  const ssize_t n = read(fd, buf, sizeof buf - 1);
+  close(fd);
+
+  if (n <= 0) {
+    snprintf(g_msg, sizeof g_msg, "(%s read) %s", __func__, n == 0 ? "empty clipboard" : strerror(errno));
+    g_msg_type = MSG_TYPE_ERROR;
+    return;
+  }
+  buf[n] = '\0';
+
+  char *line = buf;
+  char *newline = strchr(line, '\n');
+  if (!newline) {
+    snprintf(g_msg, sizeof g_msg, "(%s) invalid clipboard format", __func__);
+    g_msg_type = MSG_TYPE_ERROR;
+    return;
+  }
+  *newline = '\0';
+
+  const bool delete_source = (strcmp(line, "move") == 0);
+
+  line = newline + 1;
+  newline = strchr(line, '\n');
+  if (newline) {
+    *newline = '\0';
+  }
+
+  if (line[0] == '\0') {
+    snprintf(g_msg, sizeof g_msg, "(%s) empty clipboard", __func__);
     g_msg_type = MSG_TYPE_ERROR;
     return;
   }
 
-  ret = close(fd);
-  if (ret == -1) {
-    snprintf(g_msg, sizeof g_msg, "(%s close) %s", __func__, strerror(errno));
-    g_msg_type = MSG_TYPE_ERROR;
-    return;
-  }
-
-  if (msg.delete_source_on_paste) {
-    if (os_move(msg.source_file_path, target_dir_path) == 0) {
+  if (delete_source) {
+    if (os_move(line, target_dir_path) == 0) {
       snprintf(g_msg, sizeof g_msg, "Moved successfully");
       g_msg_type = MSG_TYPE_SUCCESS;
     }
   } else {
-    if (os_copy(msg.source_file_path, target_dir_path) == 0) {
+    if (os_copy(line, target_dir_path) == 0) {
       snprintf(g_msg, sizeof g_msg, "Copied successfully");
       g_msg_type = MSG_TYPE_SUCCESS;
     }
-  }
-
-  ret = unlink(NAMED_PIPE);
-  if (ret == -1) {
-    snprintf(g_msg, sizeof g_msg, "(%s unlink) %s", __func__, strerror(errno));
-    g_msg_type = MSG_TYPE_ERROR;
   }
 }

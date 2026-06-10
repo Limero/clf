@@ -12,86 +12,77 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int os_handle_child_exit(const char *func, const int childExitStatus) {
-  if (WIFEXITED(childExitStatus)) {
-    const int status = WEXITSTATUS(childExitStatus);
-    if (status == 0) {
-      return 0;
-    }
-    snprintf(g_msg, sizeof g_msg, "(%s) exited with code %d", func, status);
-    g_msg_type = MSG_TYPE_ERROR;
-    return -1;
-  } else if (WIFSIGNALED(childExitStatus)) {
-    return 0;
-  } else if (WIFSTOPPED(childExitStatus)) {
-    const int sig = WSTOPSIG(childExitStatus);
-    snprintf(g_msg, sizeof g_msg, "(%s) stopped by signal %d (%s)", func, sig, strsignal(sig));
-    g_msg_type = MSG_TYPE_ERROR;
-    return -1;
-  } else if (WIFCONTINUED(childExitStatus)) {
-    return -1;
-  } else {
-    snprintf(g_msg, sizeof g_msg, "(%s) unknown status 0x%x", func, (unsigned)childExitStatus);
+static int os_run(const char *func, const char *file, char *const argv[]) {
+  int pipefd[2];
+  if (pipe(pipefd) == -1) {
+    snprintf(g_msg, sizeof g_msg, "(%s pipe) %s", func, strerror(errno));
     g_msg_type = MSG_TYPE_ERROR;
     return -1;
   }
+
+  pid_t pid = fork();
+  if (pid == -1) {
+    close(pipefd[0]);
+    close(pipefd[1]);
+    snprintf(g_msg, sizeof g_msg, "(%s fork) %s", func, strerror(errno));
+    g_msg_type = MSG_TYPE_ERROR;
+    return -1;
+  }
+
+  if (pid == 0) {
+    close(pipefd[0]);
+    dup2(pipefd[1], STDERR_FILENO);
+    close(pipefd[1]);
+    execvp(file, argv);
+    _exit(1);
+  }
+
+  close(pipefd[1]);
+
+  int child_status;
+  if (waitpid(pid, &child_status, 0) == -1) {
+    close(pipefd[0]);
+    snprintf(g_msg, sizeof g_msg, "(%s waitpid) %s", func, strerror(errno));
+    g_msg_type = MSG_TYPE_ERROR;
+    return -1;
+  }
+
+  if (WIFEXITED(child_status) && WEXITSTATUS(child_status) == 0) {
+    close(pipefd[0]);
+    return 0;
+  }
+
+  ssize_t n = read(pipefd[0], g_msg, sizeof(g_msg) - 1);
+  close(pipefd[0]);
+  if (n > 0) {
+    g_msg[n] = '\0';
+    size_t len = strlen(g_msg);
+    while (len > 0 && (g_msg[len - 1] == '\n' || g_msg[len - 1] == '\r'))
+      g_msg[--len] = '\0';
+  } else if (n == 0) {
+    snprintf(g_msg, sizeof g_msg, "(%s) exited with code %d", func,
+             WIFEXITED(child_status) ? WEXITSTATUS(child_status) : -1);
+  } else {
+    snprintf(g_msg, sizeof g_msg, "(%s read) %s", func, strerror(errno));
+  }
+  g_msg_type = MSG_TYPE_ERROR;
+  return -1;
 }
 
 int os_copy(const char *source, const char *dest) {
   assert(source);
   assert(dest);
 
-  pid_t pid = fork();
-  if (pid == -1) {
-    snprintf(g_msg, sizeof g_msg, "(%s fork) %s", __func__, strerror(errno));
-    g_msg_type = MSG_TYPE_ERROR;
-    return -1;
-  }
-
-  if (pid == 0) {
-    execlp(CMD_COPY, CMD_COPY, "-r", source, dest, (char *)0);
-  } else {
-    int childExitStatus;
-    pid_t ws = waitpid(pid, &childExitStatus, WNOHANG);
-    if (ws == -1) {
-      snprintf(g_msg, sizeof g_msg, "(%s waitpid) %s", __func__, strerror(errno));
-      g_msg_type = MSG_TYPE_ERROR;
-      return -1;
-    }
-
-    return os_handle_child_exit("os_copy", childExitStatus);
-  }
-
-  assert(0 && "unreachable");
-  return 0;
+  char *argv[] = {(char *)CMD_COPY, "-r", (char *)source, (char *)dest, NULL};
+  return os_run("os_copy", CMD_COPY, argv);
 }
 
 int os_move(const char *source, const char *dest) {
   assert(source);
   assert(dest);
 
-  pid_t pid = fork();
-  if (pid == -1) {
-    snprintf(g_msg, sizeof g_msg, "(%s fork) %s", __func__, strerror(errno));
-    g_msg_type = MSG_TYPE_ERROR;
-    return -1;
-  }
-
-  if (pid == 0) {
-    execlp(CMD_MOVE, CMD_MOVE, source, dest, (char *)0);
-  } else {
-    int childExitStatus;
-    pid_t ws = waitpid(pid, &childExitStatus, WNOHANG);
-    if (ws == -1) {
-      snprintf(g_msg, sizeof g_msg, "(%s waitpid) %s", __func__, strerror(errno));
-      g_msg_type = MSG_TYPE_ERROR;
-      return -1;
-    }
-    return os_handle_child_exit("os_move", childExitStatus);
-  }
-
-  assert(0 && "unreachable");
-  return 0;
+  char *argv[] = {(char *)CMD_MOVE, (char *)source, (char *)dest, NULL};
+  return os_run("os_move", CMD_MOVE, argv);
 }
 
 void os_exec(const char *c, const char *arg) {
