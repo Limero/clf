@@ -7,7 +7,7 @@ SOURCES = main.c
 ALL_SRCS = $(wildcard *.c)
 HEADERS = $(wildcard *.h) $(wildcard include/*.h)
 
-.PHONY: all clean install debug release test
+.PHONY: all clean install debug release test lint
 
 all: $(TARGET)
 
@@ -29,6 +29,9 @@ release: $(TARGET)
 test: test-all.c
 	$(CC) $(CFLAGS) -std=c11 -Wno-unused-variable $(DEFINES) -o $(TARGET)-test test-all.c && ./$(TARGET)-test
 
+lint:
+	clang-format -i $(ALL_SRCS) $(HEADERS)
+
 help:
 	@echo "Available targets:"
 	@echo "  all         - Build the file manager (default)"
@@ -37,4 +40,5 @@ help:
 	@echo "  debug       - Build with debug symbols and address sanitizer"
 	@echo "  release     - Build optimized release version"
 	@echo "  test        - Run all tests
+	@echo "  lint        - Format all source files with clang-format
 	@echo "  help        - Show this help message"
