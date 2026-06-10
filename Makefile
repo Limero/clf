@@ -34,4 +34,5 @@ help:
 	@echo "  install     - Install to ~/.local/bin"
 	@echo "  debug       - Build with debug symbols and address sanitizer"
 	@echo "  release     - Build optimized release version"
+	@echo "  test        - Run all tests
 	@echo "  help        - Show this help message"

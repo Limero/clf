@@ -14,5 +14,6 @@
 * Select files and copy/cut multiple
 * Investigate if creating symlinks in /tmp for copy/paste works better than named pipes
 * Show progress for copy/move
+* Tab completion for commands
 * Add tests for more core functionality
 * Other TODO comments around the codebase
