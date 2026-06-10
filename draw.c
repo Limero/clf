@@ -117,6 +117,18 @@ static int int_digits(const int n) {
   return 4;
 }
 
+static bool is_yanked_entry(const char *base_dir, const char *entry_name) {
+  if (g_yanked_path[0] == '\0')
+    return false;
+  char entry_path[PATH_MAX];
+  const int needed = snprintf(entry_path, sizeof entry_path, "%s/%s", base_dir, entry_name);
+  return (needed >= 0 && needed < (int)sizeof entry_path && strcmp(entry_path, g_yanked_path) == 0);
+}
+
+static uintattr_t yank_bg(void) {
+  return g_yanked_is_move ? COLOR_YANK_MOVE : COLOR_YANK_COPY;
+}
+
 static void draw_left_column(const int offset_x, const int width) {
   if (strcmp(g_cwd, "/") == 0) {
     return;
@@ -163,11 +175,26 @@ static void draw_left_column(const int offset_x, const int width) {
 
   const int stop_idx = MIN(start_idx + tb_height() - 2, g_items_in_left_dir);
 
+  char left_parent[PATH_MAX];
+  const bool has_yanked = g_yanked_path[0] != '\0';
+  if (has_yanked) {
+    strlcpy(left_parent, g_cwd, sizeof left_parent);
+    char *slash = strrchr(left_parent, '/');
+    if (slash == left_parent) {
+      left_parent[1] = '\0';
+    } else {
+      *slash = '\0';
+    }
+  }
+
   int y = 1;
   for (int i = start_idx; i < stop_idx; i++) {
     const uintattr_t fg = color_file(g_namelist_left[i]->d_type);
-    const uintattr_t bg = i == g_left_column_idx ? COLOR_REVERSE : COLOR_DEFAULT;
-    tb_printf(offset_x + 1, y, fg, bg, " %-*.*s", width - 1, width - 1, g_namelist_left[i]->d_name);
+    uintattr_t bg = (i == g_left_column_idx) ? COLOR_REVERSE : COLOR_DEFAULT;
+
+    const bool yanked = is_yanked_entry(left_parent, g_namelist_left[i]->d_name);
+    tb_set_cell(offset_x, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
+    tb_printf(offset_x + 1, y, fg, bg, " %-*.*s", width - 1 - yanked, width - 1 - yanked, g_namelist_left[i]->d_name);
     y++;
   }
 }
@@ -212,8 +239,11 @@ static void draw_middle_column(const int offset_x, const int width) {
     }
 
     const uintattr_t fg = color_file(g_namelist_middle[i]->d_type);
-    const uintattr_t bg = i == g_current_selection.idx ? COLOR_REVERSE : COLOR_DEFAULT;
-    tb_printf(offset_x + 2, y, fg, bg, " %-*.*s", width - 4, width - 4, g_namelist_middle[i]->d_name);
+    uintattr_t bg = (i == g_current_selection.idx) ? COLOR_REVERSE : COLOR_DEFAULT;
+
+    const bool yanked = is_yanked_entry(g_cwd, g_namelist_middle[i]->d_name);
+    tb_set_cell(offset_x + 1, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
+    tb_printf(offset_x + 2, y, fg, bg, " %-*.*s", width - 4 - yanked, width - 4 - yanked, g_namelist_middle[i]->d_name);
 
     y++;
   }
@@ -266,12 +296,25 @@ static void draw_right_column(const int offset_x, const int width) {
 
   const int stop_idx = MIN(start_idx + tb_height() - 2, g_items_in_right_dir);
 
+  char right_base[PATH_MAX];
+  bool has_yanked = g_yanked_path[0] != '\0';
+  if (has_yanked) {
+    const int needed = snprintf(right_base, sizeof right_base, "%s/%s", g_cwd, g_current_selection.name);
+    if (needed < 0 || needed >= (int)sizeof right_base) {
+      has_yanked = false;
+    }
+  }
+
   for (int i = start_idx; i < stop_idx; i++) {
     uintattr_t c = color_file(g_namelist_right[i]->d_type);
     if (i == g_right_column_idx) {
       c |= COLOR_UNDERLINE;
     }
-    tb_printf(offset_x + 1, y, c, COLOR_DEFAULT, " %-*.*s", width - 1, width - 1, g_namelist_right[i]->d_name);
+
+    const bool yanked = has_yanked && is_yanked_entry(right_base, g_namelist_right[i]->d_name);
+    tb_set_cell(offset_x, y, ' ', c, yanked ? yank_bg() : COLOR_DEFAULT);
+    tb_printf(offset_x + 1, y, c, COLOR_DEFAULT, " %-*.*s", width - 1 - yanked, width - 1 - yanked,
+              g_namelist_right[i]->d_name);
 
     y++;
   }

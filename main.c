@@ -94,6 +94,7 @@ int main(int argc, char **argv) {
   struct tb_event ev;
 
   tb_init();
+  copy_init();
 
   for (;;) {
     draw_screen(repeat);
