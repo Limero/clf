@@ -1,7 +1,6 @@
 # TODO
 * Do more partial clearings instead full tb_clear()
 * Yanking file in one instance doesn't update the others
-* Current linenumber is padded in lf but not here
 * Periodically reload directories
 * Monitor filesystem events to update directories
 * Different colors for executable files (use access() and string concat for ../ to work in left col)

@@ -235,8 +235,9 @@ static void draw_middle_column(const int offset_x, const int width) {
       strlcpy(g_current_selection.name, g_namelist_middle[i]->d_name, sizeof(g_current_selection.name));
     }
     if (OPT_NUMBER) {
-      tb_printf(offset_x, y, COLOR_LINENUMBER, COLOR_DEFAULT, "%*d", number_width,
-                (g_current_selection.idx == i || !OPT_RELATIVE_NUMBER) ? i + 1 : abs(g_current_selection.idx - i));
+      const int num = (g_current_selection.idx == i || !OPT_RELATIVE_NUMBER) ? i + 1 : abs(g_current_selection.idx - i);
+      const char *fmt = (g_current_selection.idx == i && num < 10) ? "%-*d" : "%*d";
+      tb_printf(offset_x, y, COLOR_LINENUMBER, COLOR_DEFAULT, fmt, number_width, num);
     }
 
     const uintattr_t fg = color_file(g_namelist_middle[i]->d_type);
