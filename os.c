@@ -144,6 +144,11 @@ void os_exec_output(const char *c, const char *arg) {
     g_msg_type = MSG_TYPE_ERROR;
   }
 
+  char prev_cwd[PATH_MAX];
+  if (getcwd(prev_cwd, sizeof prev_cwd) == NULL) {
+    prev_cwd[0] = '\0';
+  }
+
   char *cwd_marker_start = NULL;
   for (char *p = g_msg; (p = strstr(p, marker)) != NULL; p += 1) {
     cwd_marker_start = p;
@@ -157,6 +162,8 @@ void os_exec_output(const char *c, const char *arg) {
       snprintf(g_msg, sizeof g_msg, "(%s getcwd) %s", __func__, strerror(errno));
       g_msg_type = MSG_TYPE_ERROR;
     }
-    g_current_selection.idx = 0;
+    if (strcmp(prev_cwd, g_cwd) != 0) {
+      g_current_selection.idx = 0;
+    }
   }
 }

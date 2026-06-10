@@ -13,3 +13,7 @@
 * Tab completion for commands
 * Add tests for more core functionality
 * Handle collision with existing files when pasting after copy/move
+* Having last file in folder selected and removing it with command should move up cursor
+* Create new file before selected item in list with command will move cursor to different item
+* Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `pwd`
+* Bind commands to keys in config.h (can be used for bookmarks with cd)
