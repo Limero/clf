@@ -4,12 +4,14 @@ DEFINES = -D_XOPEN_SOURCE -D_DEFAULT_SOURCE
 
 TARGET = clf
 SOURCES = main.c
+ALL_SRCS = $(wildcard *.c)
+HEADERS = $(wildcard *.h) $(wildcard include/*.h)
 
 .PHONY: all clean install debug release test
 
 all: $(TARGET)
 
-$(TARGET): $(SOURCES)
+$(TARGET): $(SOURCES) $(ALL_SRCS) $(HEADERS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $(TARGET) $(SOURCES)
 
 clean:
