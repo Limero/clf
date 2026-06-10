@@ -12,12 +12,12 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-static int os_run(const char *func, const char *file, char *const argv[]) {
+static bool os_run(const char *func, const char *file, char *const argv[]) {
   int pipefd[2];
   if (pipe(pipefd) == -1) {
     snprintf(g_msg, sizeof g_msg, "(%s pipe) %s", func, strerror(errno));
     g_msg_type = MSG_TYPE_ERROR;
-    return -1;
+    return false;
   }
 
   pid_t pid = fork();
@@ -26,7 +26,7 @@ static int os_run(const char *func, const char *file, char *const argv[]) {
     close(pipefd[1]);
     snprintf(g_msg, sizeof g_msg, "(%s fork) %s", func, strerror(errno));
     g_msg_type = MSG_TYPE_ERROR;
-    return -1;
+    return false;
   }
 
   if (pid == 0) {
@@ -44,12 +44,12 @@ static int os_run(const char *func, const char *file, char *const argv[]) {
     close(pipefd[0]);
     snprintf(g_msg, sizeof g_msg, "(%s waitpid) %s", func, strerror(errno));
     g_msg_type = MSG_TYPE_ERROR;
-    return -1;
+    return false;
   }
 
   if (WIFEXITED(child_status) && WEXITSTATUS(child_status) == 0) {
     close(pipefd[0]);
-    return 0;
+    return true;
   }
 
   ssize_t n = read(pipefd[0], g_msg, sizeof(g_msg) - 1);
@@ -66,10 +66,10 @@ static int os_run(const char *func, const char *file, char *const argv[]) {
     snprintf(g_msg, sizeof g_msg, "(%s read) %s", func, strerror(errno));
   }
   g_msg_type = MSG_TYPE_ERROR;
-  return -1;
+  return false;
 }
 
-int os_copy(const char *source, const char *dest) {
+bool os_copy(const char *source, const char *dest) {
   assert(source);
   assert(dest);
 
@@ -77,7 +77,7 @@ int os_copy(const char *source, const char *dest) {
   return os_run("os_copy", CMD_COPY, argv);
 }
 
-int os_move(const char *source, const char *dest) {
+bool os_move(const char *source, const char *dest) {
   assert(source);
   assert(dest);
 

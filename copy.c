@@ -31,7 +31,7 @@ void copy_yank(const char *source_file_path, const bool delete_source_on_paste) 
   close(fd);
 }
 
-void copy_paste(const char *target_dir_path) {
+bool copy_paste(const char *target_dir_path) {
   const int fd = open(CLIPBOARD_FILE, O_RDONLY);
   if (fd == -1) {
     if (errno == ENOENT) {
@@ -41,7 +41,7 @@ void copy_paste(const char *target_dir_path) {
       snprintf(g_msg, sizeof g_msg, "(%s open) %s", __func__, strerror(errno));
       g_msg_type = MSG_TYPE_ERROR;
     }
-    return;
+    return false;
   }
 
   flock(fd, LOCK_SH);
@@ -53,7 +53,7 @@ void copy_paste(const char *target_dir_path) {
   if (n <= 0) {
     snprintf(g_msg, sizeof g_msg, "(%s read) %s", __func__, n == 0 ? "empty clipboard" : strerror(errno));
     g_msg_type = MSG_TYPE_ERROR;
-    return;
+    return false;
   }
   buf[n] = '\0';
 
@@ -62,7 +62,7 @@ void copy_paste(const char *target_dir_path) {
   if (!newline) {
     snprintf(g_msg, sizeof g_msg, "(%s) invalid clipboard format", __func__);
     g_msg_type = MSG_TYPE_ERROR;
-    return;
+    return false;
   }
   *newline = '\0';
 
@@ -77,18 +77,21 @@ void copy_paste(const char *target_dir_path) {
   if (line[0] == '\0') {
     snprintf(g_msg, sizeof g_msg, "(%s) empty clipboard", __func__);
     g_msg_type = MSG_TYPE_ERROR;
-    return;
+    return false;
   }
 
   if (delete_source) {
-    if (os_move(line, target_dir_path) == 0) {
+    if (os_move(line, target_dir_path)) {
       snprintf(g_msg, sizeof g_msg, "Moved successfully");
       g_msg_type = MSG_TYPE_SUCCESS;
+      return true;
     }
   } else {
-    if (os_copy(line, target_dir_path) == 0) {
+    if (os_copy(line, target_dir_path)) {
       snprintf(g_msg, sizeof g_msg, "Copied successfully");
       g_msg_type = MSG_TYPE_SUCCESS;
+      return true;
     }
   }
+  return false;
 }
