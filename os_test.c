@@ -16,17 +16,19 @@ static MunitResult test_os_exec_output(const MunitParameter params[], void *data
     assert(g_msg_type == MSG_TYPE_ERROR);
   }
 
-  // Error message from stderr
+  // Error message from stderr (command fails with non-zero exit)
   {
-    return MUNIT_SKIP; // TODO
-    os_exec_output("echo 'hello' >&2", "");
-    // assert_string_equal("hello\n", g_msg);
-    // assert(g_msg_type == MSG_TYPE_ERROR);
+    os_exec_output("sh -c 'echo error >&2; exit 1'", "");
+    test_assert_string_contains(g_msg, "error");
+    assert(g_msg_type == MSG_TYPE_ERROR);
   }
 
   // Working directory is updated if cd in command
   {
-    assert_string_equal(".", g_cwd);
+    char initial_cwd[PATH_MAX];
+    assert(getcwd(initial_cwd, sizeof(initial_cwd)));
+    assert_string_equal(initial_cwd, g_cwd);
+
     os_exec_output("cd /tmp", "");
     test_assert_string_contains(g_cwd, "/tmp");
 

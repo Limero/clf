@@ -15,5 +15,4 @@
 * Show progress for copy/move
 * Tab completion for commands
 * Add tests for more core functionality
-* Other TODO comments around the codebase
 * Handle collision with existing files when pasting after copy/move
