@@ -228,13 +228,14 @@ static void draw_middle_column(const int offset_x, const int width) {
   }
 
   const int stop_idx = MIN(start_idx + view_height, g_items_in_middle_dir);
+  const int number_width = OPT_NUMBER ? int_digits(g_items_in_middle_dir) : 0;
 
   for (int i = start_idx; i < stop_idx; i++) {
     if (i == g_current_selection.idx) {
       strlcpy(g_current_selection.name, g_namelist_middle[i]->d_name, sizeof(g_current_selection.name));
     }
     if (OPT_NUMBER) {
-      tb_printf(offset_x, y, COLOR_LINENUMBER, COLOR_DEFAULT, "%d",
+      tb_printf(offset_x, y, COLOR_LINENUMBER, COLOR_DEFAULT, "%*d", number_width,
                 (g_current_selection.idx == i || !OPT_RELATIVE_NUMBER) ? i + 1 : abs(g_current_selection.idx - i));
     }
 
@@ -242,8 +243,9 @@ static void draw_middle_column(const int offset_x, const int width) {
     uintattr_t bg = (i == g_current_selection.idx) ? COLOR_REVERSE : COLOR_DEFAULT;
 
     const bool yanked = is_yanked_entry(g_cwd, g_namelist_middle[i]->d_name);
-    tb_set_cell(offset_x + 1, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
-    tb_printf(offset_x + 2, y, fg, bg, " %-*.*s", width - 4 - yanked, width - 4 - yanked, g_namelist_middle[i]->d_name);
+    tb_set_cell(offset_x + number_width, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
+    tb_printf(offset_x + number_width + 1, y, fg, bg, " %-*.*s", width - 2 - number_width - yanked,
+              width - 2 - number_width - yanked, g_namelist_middle[i]->d_name);
 
     y++;
   }

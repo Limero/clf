@@ -1,7 +1,5 @@
 # TODO
-* Prefix yanked files
 * Do more partial clearings instead full tb_clear()
-* Use int_digits helper in columns for dynamic line number width (probably fixes copy/move color overlap)
 * Yanking file in one instance doesn't update the others
 * Current linenumber is padded in lf but not here
 * Periodically reload directories
