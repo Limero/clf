@@ -370,7 +370,7 @@ void draw_status_running_command(void) {
   tb_present();
 }
 
-static int draw_confirmation(const char *msg1, const char *msg2) {
+static bool draw_confirmation(const char *msg1, const char *msg2) {
   clear_line(tb_height() - 1);
   tb_printf(0, tb_height() - 1, COLOR_DEFAULT, COLOR_DEFAULT, "%s%s? [y/n]", msg1, msg2);
   tb_present();

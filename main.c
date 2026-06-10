@@ -1,6 +1,6 @@
 #include "nav.c"
 
-static int main_exit(void) {
+static void main_exit(void) {
   tb_shutdown();
   free(g_username);
   free(g_hostname);
@@ -26,8 +26,6 @@ static int main_exit(void) {
     }
     free(g_namelist_right);
   }
-
-  return 0;
 }
 
 int main(int argc, char **argv) {
@@ -103,7 +101,8 @@ int main(int argc, char **argv) {
 
     switch (nav_handle_event(&ev, &repeat)) {
     case -1:
-      return main_exit();
+      main_exit();
+      return 0;
     case 0:
       repeat = 0;
     }
