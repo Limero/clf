@@ -80,28 +80,44 @@ char *strcasestr(const char *haystack, const char *needle) {
   return NULL;
 }
 
+static bool search_name_matches(const char *file_name) {
+  if (OPT_IGNORE_CASE)
+    return strcasestr(file_name, g_current_command.chars) != NULL;
+  return strstr(file_name, g_current_command.chars) != NULL;
+}
+
 void set_cursor_idx_to_search(const bool forward, const int start_idx) {
+  assert(start_idx >= -1 && start_idx <= g_items_in_middle_dir);
+
   if (forward) {
     for (int i = start_idx; i < g_items_in_middle_dir; i++) {
-      if (OPT_IGNORE_CASE && strcasestr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
-        g_cursor.idx = i;
-        return;
-      }
-      if (!OPT_IGNORE_CASE && strstr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
+      if (search_name_matches(g_namelist_middle[i]->d_name)) {
         g_cursor.idx = i;
         return;
       }
     }
-  }
-
-  for (int i = start_idx; i >= 0; i--) {
-    if (OPT_IGNORE_CASE && strcasestr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
-      g_cursor.idx = i;
-      return;
+    if (OPT_WRAP_SCAN) {
+      for (int i = 0; i < start_idx; i++) {
+        if (search_name_matches(g_namelist_middle[i]->d_name)) {
+          g_cursor.idx = i;
+          return;
+        }
+      }
     }
-    if (!OPT_IGNORE_CASE && strstr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
-      g_cursor.idx = i;
-      return;
+  } else {
+    for (int i = start_idx; i >= 0; i--) {
+      if (search_name_matches(g_namelist_middle[i]->d_name)) {
+        g_cursor.idx = i;
+        return;
+      }
+    }
+    if (OPT_WRAP_SCAN) {
+      for (int i = g_items_in_middle_dir - 1; i > start_idx; i--) {
+        if (search_name_matches(g_namelist_middle[i]->d_name)) {
+          g_cursor.idx = i;
+          return;
+        }
+      }
     }
   }
 }

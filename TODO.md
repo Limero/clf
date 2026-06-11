@@ -7,7 +7,6 @@
 * Yanking file in one instance doesn't update the others
 * Renaming file so it changes position in list will leave cursor on different file
 * Renaming file to the name of different file overwrites it
-* Searching for last item in list and pressing n segfaults
 
 ## Features
 
@@ -28,7 +27,6 @@
 * Ability to write to log file what is happening while running for debugging
 * Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
-* Add config option to wrap around when searching. called `wrapscan` in lf and is enabled by default
 
 ## General improvements
 
@@ -36,3 +34,4 @@
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `pwd`
 * Make gap between columns smaller to match lf
+* See if more of the current functionality has config options in lf
