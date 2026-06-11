@@ -1,19 +1,35 @@
 # TODO
-* Do more partial clearings instead full tb_clear()
+
+## Bugs
+
+* Having cursor on last file in folder and removing the file with command leaves cursor outside of screen (it should move up to the currently last file)
+* Creating new file before the cursor item in list with command will move cursor to different item
 * Yanking file in one instance doesn't update the others
-* Periodically reload directories
-* Monitor filesystem events to update directories
-* Different colors for executable files (use access() and string concat for ../ to work in left col)
+* Commands/opener on files with spaces in filename doesn't work
+
+## Features
+
+* Periodically poll directories for changes (`tb_peek_event()` and `scandir()`)
+* Monitor filesystem events to update directories. inotify (Linux) and kqueue (macOS/BSD) - [File Watcher in C](https://www.youtube.com/watch?v=07sXGHxjbRI)
+* Different colors for executable files (use `access()` and string concat for ../ to work in left col)
 * Smarter cursor position when toggling hidden files
-* Remember position in right column when moving back multiple directories
-* Remember position in right column for all directories (it's currently reset when moving up/down)
-* Select new file/dir after touch/mkdir/etc.
+* Remember cursor position in right column when moving back multiple directories
+* Remember cursor position in right column for all directories (it's currently reset when moving up/down)
+* Move cursor to new file/dir after commands, touch/mkdir/etc
+* Move cursor to pasted file/dir after copy/move
 * Select files and copy/cut multiple
 * Show progress for copy/move
 * Tab completion for commands
-* Add tests for more core functionality
+* Add support for shell aliases for commands
 * Handle collision with existing files when pasting after copy/move
-* Having last file in folder selected and removing it with command should move up cursor
-* Create new file before selected item in list with command will move cursor to different item
-* Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `pwd`
 * Bind commands to keys in config.h (can be used for bookmarks with cd)
+* Ability to write to log file what is happening while running for debugging
+
+## General improvements
+
+* Rename what is currently known as "selection" to cursor or current file, since it will be confusing when actual file selection is added
+* Do more partial clearings instead full `tb_clear()`
+* Add tests for more core functionality
+* Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `pwd`
+* Make gap between columns smaller to match lf
+* Remove munit dependency
