@@ -28,7 +28,6 @@
 
 ## General improvements
 
-* Rename what is currently known as "selection" to cursor or current file, since it will be confusing when actual file selection is added
 * Do more partial clearings instead full `tb_clear()`
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `pwd`

@@ -111,10 +111,10 @@ bool os_move(const char *source, const char *dest) {
 }
 
 static bool build_cmd(char *cmd, size_t cmd_size, const char *c, const char *arg, const char *suffix) {
-  char name_quoted[sizeof g_current_selection.name * 4 + 2];
-  char arg_quoted[sizeof g_current_selection.name * 4 + 2] = "";
+  char name_quoted[sizeof g_cursor.name * 4 + 2];
+  char arg_quoted[sizeof g_cursor.name * 4 + 2] = "";
 
-  shell_quote(g_current_selection.name, name_quoted, sizeof name_quoted);
+  shell_quote(g_cursor.name, name_quoted, sizeof name_quoted);
   if (arg[0] != '\0')
     shell_quote(arg, arg_quoted, sizeof arg_quoted);
 
@@ -200,7 +200,7 @@ void os_exec_output(const char *c, const char *arg) {
       g_msg_type = MSG_TYPE_ERROR;
     }
     if (strcmp(prev_cwd, g_cwd) != 0) {
-      g_current_selection.idx = 0;
+      g_cursor.idx = 0;
     }
   }
 }

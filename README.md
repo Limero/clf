@@ -39,9 +39,9 @@ It supports moving/copying files between multiple instances of the program throu
 
 ## Preview/open
 
-To show file previews, it calls a script named `scope` in your `$PATH`. The arguments are: `name of the current selection`, `columns of the preview window` and `lines of the preview window`.
+To show file previews, it calls a script named `scope` in your `$PATH`. The arguments are: `name of the current file`, `columns of the preview window` and `lines of the preview window`.
 
-For opening files, it will call a script named `opener` in your `$PATH`. The argument is: `name of the current selection`.
+For opening files, it will call a script named `opener` in your `$PATH`. The argument is: `name of the current file`.
 
 ## Shell integration
 

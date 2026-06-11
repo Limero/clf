@@ -5,11 +5,11 @@
 #include "global.h"
 
 static void nav_move_to_line(const int l) {
-  if (g_current_selection.idx == l)
+  if (g_cursor.idx == l)
     return;
   g_update.dir_right = true;
   tb_clear();
-  g_current_selection.idx = l;
+  g_cursor.idx = l;
   g_right_column_idx = 0;
 }
 
@@ -22,7 +22,7 @@ static void nav_bottom(void) {
 }
 
 static void nav_up(const int n) {
-  if (g_current_selection.idx - n < 0) {
+  if (g_cursor.idx - n < 0) {
     if (n > 1) {
       nav_top();
     } else if (OPT_WRAP_SCROLL) {
@@ -33,12 +33,12 @@ static void nav_up(const int n) {
 
   g_update.dir_right = true;
   tb_clear();
-  g_current_selection.idx -= n;
+  g_cursor.idx -= n;
   g_right_column_idx = 0;
 }
 
 static void nav_down(const int n) {
-  if (g_current_selection.idx + n + 1 > g_items_in_middle_dir) {
+  if (g_cursor.idx + n + 1 > g_items_in_middle_dir) {
     if (n > 1) {
       nav_bottom();
     } else if (OPT_WRAP_SCROLL) {
@@ -49,21 +49,21 @@ static void nav_down(const int n) {
 
   g_update.dir_right = true;
   tb_clear();
-  g_current_selection.idx += n;
+  g_cursor.idx += n;
   g_right_column_idx = 0;
 }
 
 static void nav_page_up(void) {
   g_update.dir_right = true;
   tb_clear();
-  g_current_selection.idx = MAX(g_current_selection.idx - tb_height() / 2, 0);
+  g_cursor.idx = MAX(g_cursor.idx - tb_height() / 2, 0);
   g_right_column_idx = 0;
 }
 
 static void nav_page_down(void) {
   g_update.dir_right = true;
   tb_clear();
-  g_current_selection.idx = MIN(g_current_selection.idx + tb_height() / 2, g_items_in_middle_dir - 1);
+  g_cursor.idx = MIN(g_cursor.idx + tb_height() / 2, g_items_in_middle_dir - 1);
   g_right_column_idx = 0;
 }
 
@@ -87,8 +87,8 @@ static void nav_left(void) {
     g_msg_type = MSG_TYPE_ERROR;
     return;
   }
-  g_right_column_idx = g_current_selection.idx;
-  g_current_selection.idx = g_left_column_idx;
+  g_right_column_idx = g_cursor.idx;
+  g_cursor.idx = g_left_column_idx;
 }
 
 static void nav_right(void) {
@@ -97,11 +97,11 @@ static void nav_right(void) {
   g_update.dir_right = true;
   tb_clear();
 
-  if (chdir(g_current_selection.name) == -1) {
+  if (chdir(g_cursor.name) == -1) {
     switch (errno) {
     case ENOTDIR:
       tb_shutdown();
-      os_exec(CMD_OPEN, g_current_selection.name);
+      os_exec(CMD_OPEN, g_cursor.name);
       tb_init();
       return;
     default:
@@ -115,7 +115,7 @@ static void nav_right(void) {
     g_msg_type = MSG_TYPE_ERROR;
     return;
   }
-  g_current_selection.idx = g_right_column_idx;
+  g_cursor.idx = g_right_column_idx;
   g_right_column_idx = 0;
 }
 
@@ -190,28 +190,28 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     return 0;
   case 'y':
   case 'd': {
-    if (g_current_selection.name[0] == '\0') {
+    if (g_cursor.name[0] == '\0') {
       snprintf(g_msg, sizeof g_msg, "no file selected");
       g_msg_type = MSG_TYPE_ERROR;
       return 0;
     }
-    char cwd_with_selection[PATH_MAX];
-    int needed = snprintf(cwd_with_selection, PATH_MAX, "%s/%s", g_cwd, g_current_selection.name);
+    char cwd_with_cursor[PATH_MAX];
+    int needed = snprintf(cwd_with_cursor, PATH_MAX, "%s/%s", g_cwd, g_cursor.name);
     if (needed < 0 || needed >= PATH_MAX) {
       snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
       g_msg_type = MSG_TYPE_ERROR;
       return 0;
     }
-    copy_yank(cwd_with_selection, ev->ch == 'd');
+    copy_yank(cwd_with_cursor, ev->ch == 'd');
     return 0;
   }
   case 'D':
     if (!g_items_in_middle_dir) {
       return 0;
     }
-    if (draw_confirmation("delete ", g_current_selection.name)) {
-      os_exec_output(CMD_DELETE, g_current_selection.name);
-      g_current_selection.idx = g_current_selection.idx ? g_current_selection.idx - 1 : 0;
+    if (draw_confirmation("delete ", g_cursor.name)) {
+      os_exec_output(CMD_DELETE, g_cursor.name);
+      g_cursor.idx = g_cursor.idx ? g_cursor.idx - 1 : 0;
       g_update.dir_middle = true;
       g_update.dir_right = true;
       tb_clear();
@@ -231,8 +231,8 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
       return 0;
     }
     nav_switch_mode(MODE_COMMAND);
-    char quoted_name[sizeof g_current_selection.name * 4 + 2];
-    shell_quote(g_current_selection.name, quoted_name, sizeof quoted_name);
+    char quoted_name[sizeof g_cursor.name * 4 + 2];
+    shell_quote(g_cursor.name, quoted_name, sizeof quoted_name);
     snprintf(g_current_command.chars, sizeof g_current_command.chars, "%s %s %s", CMD_RENAME, quoted_name, quoted_name);
     g_current_command.len = strlen(g_current_command.chars);
     g_current_command.cursor = g_current_command.len;
@@ -241,19 +241,19 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     if (g_search_idx_before == -1) {
       return 0;
     }
-    set_current_selection_idx_to_search(true, g_current_selection.idx + 1);
+    set_cursor_idx_to_search(true, g_cursor.idx + 1);
     tb_clear();
     return 0;
   case 'N':
     if (g_search_idx_before == -1) {
       return 0;
     }
-    set_current_selection_idx_to_search(false, g_current_selection.idx - 1);
+    set_cursor_idx_to_search(false, g_cursor.idx - 1);
     tb_clear();
     return 0;
   case '/':
   case '?': // use N to search backwards, no need to have separate logic for it
-    g_search_idx_before = g_current_selection.idx;
+    g_search_idx_before = g_cursor.idx;
     nav_switch_mode(MODE_COMMAND);
     return 0;
   case ':':
@@ -311,7 +311,7 @@ static int nav_handle_event_command(const struct tb_event *ev) {
     return 0;
   case TB_KEY_ESC:
     if (g_search_idx_before >= 0) {
-      g_current_selection.idx = g_search_idx_before;
+      g_cursor.idx = g_search_idx_before;
       g_search_idx_before = -1;
     }
     nav_switch_mode(MODE_NORMAL);
@@ -337,14 +337,14 @@ static int nav_handle_event_command(const struct tb_event *ev) {
   case TB_KEY_BACKSPACE2:
     if (command_input_backspace()) {
       if (g_search_idx_before >= 0) {
-        g_current_selection.idx = g_search_idx_before;
+        g_cursor.idx = g_search_idx_before;
         g_search_idx_before = -1;
       }
       nav_switch_mode(MODE_NORMAL);
       return 0;
     }
     if (g_search_idx_before >= 0) {
-      set_current_selection_idx_to_search(true, 0);
+      set_cursor_idx_to_search(true, 0);
       tb_clear();
     }
     return 0;
@@ -353,7 +353,7 @@ static int nav_handle_event_command(const struct tb_event *ev) {
   if (ev->ch) {
     command_input_add(ev->ch);
     if (g_search_idx_before >= 0) {
-      set_current_selection_idx_to_search(true, 0);
+      set_cursor_idx_to_search(true, 0);
       tb_clear();
     }
   }

@@ -39,13 +39,13 @@ int main(int argc, char **argv) {
 
       if (chdir(argv[1]) == -1) {
         if (errno == ENOTDIR) {
-          set_current_selection_idx_to_name(argv[1]);
+          set_cursor_idx_to_name(argv[1]);
         } else {
           fprintf(stderr, "chdir to %s failed: %s\n", argv[1], strerror(errno));
           return 1;
         }
       } else {
-        set_current_selection_idx_to_name(p + 1);
+        set_cursor_idx_to_name(p + 1);
       }
       break;
     }

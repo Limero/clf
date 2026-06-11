@@ -63,25 +63,25 @@ static void test_shell_quote(void) {
 static void test_os_exec_spaces(void) {
   g_msg[0] = '\0';
 
-  strcpy(g_current_selection.name, "my file.txt");
-  os_exec("true", g_current_selection.name);
+  strcpy(g_cursor.name, "my file.txt");
+  os_exec("true", g_cursor.name);
   assert(g_msg[0] == '\0');
 
-  strcpy(g_current_selection.name, "it's.txt");
-  os_exec("true", g_current_selection.name);
+  strcpy(g_cursor.name, "it's.txt");
+  os_exec("true", g_cursor.name);
   assert(g_msg[0] == '\0');
 }
 
 static void test_os_exec_output_spaces(void) {
   // $f is exported to child process, so use sh -c to read it
   g_msg[0] = '\0';
-  strcpy(g_current_selection.name, "my file.txt");
+  strcpy(g_cursor.name, "my file.txt");
   os_exec_output("sh -c 'echo \"$f\"'", "");
   test_assert_string_contains(g_msg, "my file.txt");
   assert(g_msg_type == MSG_TYPE_INFO);
 
   g_msg[0] = '\0';
-  strcpy(g_current_selection.name, "it's.txt");
+  strcpy(g_cursor.name, "it's.txt");
   os_exec_output("sh -c 'echo \"$f\"'", "");
   test_assert_string_contains(g_msg, "it's.txt");
   assert(g_msg_type == MSG_TYPE_INFO);

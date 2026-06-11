@@ -37,7 +37,7 @@ static bool g_show_hidden = false;
 static struct {
   char name[256];
   int idx;
-} g_current_selection;
+} g_cursor;
 
 static modes_t g_current_mode = MODE_NORMAL;
 

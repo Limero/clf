@@ -45,19 +45,19 @@ static void reload_dir_middle(void) {
     g_items_in_middle_dir = 0;
     return;
   } else if (n == 0) {
-    g_current_selection.name[0] = '\0';
+    g_cursor.name[0] = '\0';
   }
 
   g_items_in_middle_dir = n;
   g_update.dir_middle = false;
 }
 
-void set_current_selection_idx_to_name(const char *name) {
+void set_cursor_idx_to_name(const char *name) {
   reload_dir_middle();
 
   for (int i = 0; i < g_items_in_middle_dir; i++) {
     if (strcmp(g_namelist_middle[i]->d_name, name) == 0) {
-      g_current_selection.idx = i;
+      g_cursor.idx = i;
       return;
     }
   }
@@ -80,15 +80,15 @@ char *strcasestr(const char *haystack, const char *needle) {
   return NULL;
 }
 
-void set_current_selection_idx_to_search(const bool forward, const int start_idx) {
+void set_cursor_idx_to_search(const bool forward, const int start_idx) {
   if (forward) {
     for (int i = start_idx; i < g_items_in_middle_dir; i++) {
       if (OPT_IGNORE_CASE && strcasestr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
-        g_current_selection.idx = i;
+        g_cursor.idx = i;
         return;
       }
       if (!OPT_IGNORE_CASE && strstr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
-        g_current_selection.idx = i;
+        g_cursor.idx = i;
         return;
       }
     }
@@ -96,11 +96,11 @@ void set_current_selection_idx_to_search(const bool forward, const int start_idx
 
   for (int i = start_idx; i >= 0; i--) {
     if (OPT_IGNORE_CASE && strcasestr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
-      g_current_selection.idx = i;
+      g_cursor.idx = i;
       return;
     }
     if (!OPT_IGNORE_CASE && strstr(g_namelist_middle[i]->d_name, g_current_command.chars) != NULL) {
-      g_current_selection.idx = i;
+      g_cursor.idx = i;
       return;
     }
   }
@@ -216,10 +216,10 @@ static void draw_middle_column(const int offset_x, const int width) {
     start_idx = max_start;
   }
 
-  if (g_current_selection.idx < start_idx) {
-    start_idx = g_current_selection.idx;
-  } else if (g_current_selection.idx >= start_idx + view_height) {
-    start_idx = g_current_selection.idx - (view_height - 1);
+  if (g_cursor.idx < start_idx) {
+    start_idx = g_cursor.idx;
+  } else if (g_cursor.idx >= start_idx + view_height) {
+    start_idx = g_cursor.idx - (view_height - 1);
     if (start_idx < 0) {
       start_idx = 0;
     } else if (start_idx > max_start) {
@@ -231,17 +231,17 @@ static void draw_middle_column(const int offset_x, const int width) {
   const int number_width = OPT_NUMBER ? int_digits(g_items_in_middle_dir) : 0;
 
   for (int i = start_idx; i < stop_idx; i++) {
-    if (i == g_current_selection.idx) {
-      strlcpy(g_current_selection.name, g_namelist_middle[i]->d_name, sizeof(g_current_selection.name));
+    if (i == g_cursor.idx) {
+      strlcpy(g_cursor.name, g_namelist_middle[i]->d_name, sizeof(g_cursor.name));
     }
     if (OPT_NUMBER) {
-      const int num = (g_current_selection.idx == i || !OPT_RELATIVE_NUMBER) ? i + 1 : abs(g_current_selection.idx - i);
-      const char *fmt = (g_current_selection.idx == i && num < 10) ? "%-*d" : "%*d";
+      const int num = (g_cursor.idx == i || !OPT_RELATIVE_NUMBER) ? i + 1 : abs(g_cursor.idx - i);
+      const char *fmt = (g_cursor.idx == i && num < 10) ? "%-*d" : "%*d";
       tb_printf(offset_x, y, COLOR_LINENUMBER, COLOR_DEFAULT, fmt, number_width, num);
     }
 
     const uintattr_t fg = color_file(g_namelist_middle[i]->d_type);
-    uintattr_t bg = (i == g_current_selection.idx) ? COLOR_REVERSE : COLOR_DEFAULT;
+    uintattr_t bg = (i == g_cursor.idx) ? COLOR_REVERSE : COLOR_DEFAULT;
 
     const bool yanked = is_yanked_entry(g_cwd, g_namelist_middle[i]->d_name);
     tb_set_cell(offset_x + number_width, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
@@ -263,14 +263,14 @@ static void draw_right_column(const int offset_x, const int width) {
       free(g_namelist_right);
     }
 
-    const int n = scandir(g_current_selection.name, &g_namelist_right, filter_dir, compare_dirs_first);
+    const int n = scandir(g_cursor.name, &g_namelist_right, filter_dir, compare_dirs_first);
     g_update.dir_right = false;
     if (n == -1) {
       g_namelist_right = NULL;
       g_items_in_right_dir = 0;
       switch (errno) {
       case ENOTDIR:
-        preview_start(offset_x, g_current_selection.name);
+        preview_start(offset_x, g_cursor.name);
         return;
       case ENOENT:
         return;
@@ -285,7 +285,7 @@ static void draw_right_column(const int offset_x, const int width) {
 
   if (g_items_in_right_dir == 0) {
     struct stat st;
-    if (lstat(g_current_selection.name, &st) == 0 && S_ISDIR(st.st_mode)) {
+    if (lstat(g_cursor.name, &st) == 0 && S_ISDIR(st.st_mode)) {
       tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
     }
     return;
@@ -302,7 +302,7 @@ static void draw_right_column(const int offset_x, const int width) {
   char right_base[PATH_MAX];
   bool has_yanked = g_yanked_path[0] != '\0';
   if (has_yanked) {
-    const int needed = snprintf(right_base, sizeof right_base, "%s/%s", g_cwd, g_current_selection.name);
+    const int needed = snprintf(right_base, sizeof right_base, "%s/%s", g_cwd, g_cursor.name);
     if (needed < 0 || needed >= (int)sizeof right_base) {
       has_yanked = false;
     }
@@ -330,15 +330,14 @@ static void draw_path(void) {
 
   if (strcmp(g_cwd, "/") == 0) {
     tb_print(offset, 0, COLOR_PATH_DIR, COLOR_DEFAULT, "/");
-    tb_print(offset + 1, 0, COLOR_PATH_SELECTION, COLOR_DEFAULT, g_current_selection.name);
+    tb_print(offset + 1, 0, COLOR_PATH_CURSOR, COLOR_DEFAULT, g_cursor.name);
   } else {
     if (strncmp(g_homepath, g_cwd, g_homepath_len) == 0) {
       tb_printf(offset, 0, COLOR_PATH_DIR, COLOR_DEFAULT, "~%s/", g_cwd + g_homepath_len);
-      tb_print(offset + strlen(g_cwd) - g_homepath_len + 2, 0, COLOR_PATH_SELECTION, COLOR_DEFAULT,
-               g_current_selection.name);
+      tb_print(offset + strlen(g_cwd) - g_homepath_len + 2, 0, COLOR_PATH_CURSOR, COLOR_DEFAULT, g_cursor.name);
     } else {
       tb_printf(offset, 0, COLOR_PATH_DIR, COLOR_DEFAULT, "%s/", g_cwd);
-      tb_print(offset + strlen(g_cwd) + 1, 0, COLOR_PATH_SELECTION, COLOR_DEFAULT, g_current_selection.name);
+      tb_print(offset + strlen(g_cwd) + 1, 0, COLOR_PATH_CURSOR, COLOR_DEFAULT, g_cursor.name);
     }
   }
 }
@@ -371,8 +370,8 @@ static void draw_status_normal(const int repeat) {
     return;
   }
 
-  char path[sizeof(g_cwd) + 1 /* slash */ + sizeof(g_current_selection.name)];
-  ssize_t needed = snprintf(path, sizeof(path), "%s/%s", g_cwd, g_current_selection.name);
+  char path[sizeof(g_cwd) + 1 /* slash */ + sizeof(g_cursor.name)];
+  ssize_t needed = snprintf(path, sizeof(path), "%s/%s", g_cwd, g_cursor.name);
   if (needed < 0 || (size_t)needed >= sizeof(path)) {
     snprintf(g_msg, sizeof g_msg, "Path too long (needed %zd bytes)\n", needed + 1);
     g_msg_type = MSG_TYPE_ERROR;
@@ -390,8 +389,8 @@ static void draw_status_normal(const int repeat) {
   tb_printf(0, tb_height() - 1, COLOR_STATUS_PERM, COLOR_DEFAULT, "%.10s", status_str);
   tb_print(11, tb_height() - 1, COLOR_DEFAULT, COLOR_DEFAULT, status_str + 11);
 
-  const int end_offset = tb_width() - int_digits(g_current_selection.idx + 1) - int_digits(g_items_in_middle_dir) - 1;
-  tb_printf(end_offset, tb_height() - 1, COLOR_DEFAULT, COLOR_DEFAULT, "%d/%d", g_current_selection.idx + 1,
+  const int end_offset = tb_width() - int_digits(g_cursor.idx + 1) - int_digits(g_items_in_middle_dir) - 1;
+  tb_printf(end_offset, tb_height() - 1, COLOR_DEFAULT, COLOR_DEFAULT, "%d/%d", g_cursor.idx + 1,
             g_items_in_middle_dir);
 
   if (repeat) {
