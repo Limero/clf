@@ -12,6 +12,31 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+static void shell_quote(const char *s, char *buf, size_t buf_size) {
+  if (buf_size == 0)
+    return;
+  char *p = buf;
+  const char *end = buf + buf_size - 1;
+  if (p < end)
+    *p++ = '\'';
+  while (*s && p < end) {
+    if (*s == '\'') {
+      if (p + 4 > end)
+        break;
+      *p++ = '\'';
+      *p++ = '\\';
+      *p++ = '\'';
+      *p++ = '\'';
+    } else {
+      *p++ = *s;
+    }
+    s++;
+  }
+  if (p < end)
+    *p++ = '\'';
+  *p = '\0';
+}
+
 static bool os_run(const char *func, const char *file, char *const argv[]) {
   int pipefd[2];
   if (pipe(pipefd) == -1) {
@@ -85,10 +110,21 @@ bool os_move(const char *source, const char *dest) {
   return os_run("os_move", CMD_MOVE, argv);
 }
 
-void os_exec(const char *c, const char *arg) {
-  char cmd[256];
+static bool build_cmd(char *cmd, size_t cmd_size, const char *c, const char *arg, const char *suffix) {
+  char name_quoted[sizeof g_current_selection.name * 4 + 2];
+  char arg_quoted[sizeof g_current_selection.name * 4 + 2] = "";
 
-  if (snprintf(cmd, sizeof(cmd), "f='%s' %s %s", g_current_selection.name, c, arg) >= (int)sizeof(cmd)) {
+  shell_quote(g_current_selection.name, name_quoted, sizeof name_quoted);
+  if (arg[0] != '\0')
+    shell_quote(arg, arg_quoted, sizeof arg_quoted);
+
+  int n = snprintf(cmd, cmd_size, "f=%s %s %s%s", name_quoted, c, arg_quoted, suffix);
+  return n >= 0 && (size_t)n < cmd_size;
+}
+
+void os_exec(const char *c, const char *arg) {
+  char cmd[4096];
+  if (!build_cmd(cmd, sizeof cmd, c, arg, "")) {
     snprintf(g_msg, sizeof g_msg, "(%s snprintf) command too long %lu", __func__, sizeof(cmd));
     g_msg_type = MSG_TYPE_ERROR;
     return;
@@ -102,11 +138,12 @@ void os_exec(const char *c, const char *arg) {
 }
 
 void os_exec_output(const char *c, const char *arg) {
-  char cmd[1024];
+  char cmd[4096];
 
   const char *marker = "--CWD_MARKER--";
-  const char *suffix = "; status=$?; printf '%s%s\\n' '--CWD_MARKER--' \"$PWD\"; exit $status";
-  if (snprintf(cmd, sizeof(cmd), "f='%s' %s %s 2>&1%s", g_current_selection.name, c, arg, suffix) >= (int)sizeof(cmd)) {
+  const char *suffix = " 2>&1; status=$?; printf '%s%s\\n' '--CWD_MARKER--' \"$PWD\"; exit $status";
+
+  if (!build_cmd(cmd, sizeof cmd, c, arg, suffix)) {
     snprintf(g_msg, sizeof g_msg, "(%s snprintf) command too long %lu", __func__, sizeof(cmd));
     g_msg_type = MSG_TYPE_ERROR;
     return;

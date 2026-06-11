@@ -5,7 +5,7 @@
 #include <string.h>
 
 struct {
-  char chars[1024];
+  char chars[4096];
   int len; // without NUL-termination
   int cursor;
 } g_current_command;

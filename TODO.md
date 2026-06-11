@@ -5,7 +5,6 @@
 * Having cursor on last file in folder and removing the file with command leaves cursor outside of screen (it should move up to the currently last file)
 * Creating new file before the cursor item in list with command will move cursor to different item
 * Yanking file in one instance doesn't update the others
-* Commands/opener on files with spaces in filename doesn't work
 
 ## Features
 

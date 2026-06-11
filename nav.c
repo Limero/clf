@@ -231,8 +231,9 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
       return 0;
     }
     nav_switch_mode(MODE_COMMAND);
-    snprintf(g_current_command.chars, sizeof g_current_command.chars, "%s %s %s", CMD_RENAME, g_current_selection.name,
-             g_current_selection.name);
+    char quoted_name[sizeof g_current_selection.name * 4 + 2];
+    shell_quote(g_current_selection.name, quoted_name, sizeof quoted_name);
+    snprintf(g_current_command.chars, sizeof g_current_command.chars, "%s %s %s", CMD_RENAME, quoted_name, quoted_name);
     g_current_command.len = strlen(g_current_command.chars);
     g_current_command.cursor = g_current_command.len;
     return 0;
