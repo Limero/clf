@@ -1,7 +1,6 @@
 static const char *CMD_PREVIEW = "scope";
 static const char *CMD_OPEN = "opener";
 static const char *CMD_DELETE = "rm -rf";
-static const char *CMD_RENAME = "mv";
 static const char *CMD_MOVE = "mv";
 static const char *CMD_COPY = "cp";
 

@@ -5,6 +5,9 @@
 * Having cursor on last file in folder and removing the file with command leaves cursor outside of screen (it should move up to the currently last file)
 * Creating new file before the cursor item in list with command will move cursor to different item
 * Yanking file in one instance doesn't update the others
+* Renaming file so it changes position in list will leave cursor on different file
+* Renaming file to the name of different file overwrites it
+* Searching for last item in list and pressing n segfaults
 
 ## Features
 
@@ -23,8 +26,9 @@
 * Handle collision with existing files when pasting after copy/move
 * Bind commands to keys in config.h (can be used for bookmarks with cd)
 * Ability to write to log file what is happening while running for debugging
-* Make rename command just ask for new name instead of showing the underlying command
 * Support showing multiline output from running command
+* When renaming file with extension, put cursor right before extension instead of end
+* Add config option to wrap around when searching. called `wrapscan` in lf and is enabled by default
 
 ## General improvements
 

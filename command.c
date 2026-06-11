@@ -67,32 +67,3 @@ void command_history_add(void) {
           sizeof(command_history.history[command_history.count]));
   command_history.count++;
 }
-
-void command_input_add(const uint32_t ch) {
-  g_current_command.len++;
-  if (g_current_command.cursor < g_current_command.len) {
-    // middle of command
-    string_insert_at(g_current_command.chars, g_current_command.cursor, ch);
-  } else {
-    // end of command
-    g_current_command.chars[g_current_command.cursor] = ch;
-    g_current_command.chars[g_current_command.len] = '\0';
-  }
-  g_current_command.cursor++;
-}
-
-bool command_input_backspace(void) {
-  if (g_current_command.len > 0 && g_current_command.cursor > 0) {
-    g_current_command.len--;
-    g_current_command.cursor--;
-    if (g_current_command.cursor < g_current_command.len) {
-      // middle of command
-      string_remove_at(g_current_command.chars, g_current_command.cursor);
-    } else {
-      // end of command
-      g_current_command.chars[g_current_command.len] = '\0';
-    }
-    return false; // stay in command mode
-  }
-  return true; // enter normal mode
-}

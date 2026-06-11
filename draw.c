@@ -407,6 +407,15 @@ static void draw_status_command(void) {
                 y); // offset by one because we prefix with :
 }
 
+static void draw_status_prompt(const char *prompt, const char *buf, const int cursor) {
+  const int y = tb_height() - 1;
+  clear_line(y);
+  tb_print(0, y, COLOR_DEFAULT, COLOR_DEFAULT, prompt);
+  tb_print(strlen(prompt), y, COLOR_DEFAULT, COLOR_DEFAULT, buf);
+  tb_set_cursor(strlen(prompt) + cursor, y);
+  tb_present();
+}
+
 void draw_status_running_command(void) {
   const int y = tb_height() - 1;
   clear_line(y);
@@ -415,14 +424,10 @@ void draw_status_running_command(void) {
   tb_present();
 }
 
-static bool draw_confirmation(const char *msg1, const char *msg2) {
+static void draw_status_confirmation(const char *msg1, const char *msg2) {
   clear_line(tb_height() - 1);
   tb_printf(0, tb_height() - 1, COLOR_DEFAULT, COLOR_DEFAULT, "%s%s? [y/n]", msg1, msg2);
   tb_present();
-
-  struct tb_event ev;
-  tb_poll_event(&ev);
-  return ev.ch == 'y';
 }
 
 void draw_screen(const int repeat) {

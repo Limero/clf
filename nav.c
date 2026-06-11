@@ -4,6 +4,77 @@
 #include "draw.c"
 #include "global.h"
 
+static int nav_handle_input_key(const struct tb_event *ev, char *buf, int *cursor, int *len) {
+  switch (ev->key) {
+  case TB_KEY_ENTER:
+    return 1;
+  case TB_KEY_ESC:
+    return -1;
+  case TB_KEY_ARROW_LEFT:
+    if (*cursor > 0)
+      (*cursor)--;
+    return 0;
+  case TB_KEY_ARROW_RIGHT:
+    if (*cursor < *len)
+      (*cursor)++;
+    return 0;
+  case TB_KEY_CTRL_A:
+  case TB_KEY_HOME:
+    *cursor = 0;
+    return 0;
+  case TB_KEY_CTRL_E:
+  case TB_KEY_END:
+    *cursor = *len;
+    return 0;
+  case TB_KEY_CTRL_U:
+    buf[0] = '\0';
+    *cursor = 0;
+    *len = 0;
+    return 0;
+  case TB_KEY_BACKSPACE:
+  case TB_KEY_BACKSPACE2:
+    if (*cursor > 0) {
+      (*cursor)--;
+      (*len)--;
+      string_remove_at(buf, *cursor);
+    }
+    return 0;
+  default:
+    if (ev->ch) {
+      string_insert_at(buf, *cursor, ev->ch);
+      (*cursor)++;
+      (*len)++;
+    }
+    return 0;
+  }
+}
+
+static bool nav_get_confirmation(const char *msg1, const char *msg2) {
+  draw_status_confirmation(msg1, msg2);
+  struct tb_event ev;
+  tb_poll_event(&ev);
+  return ev.ch == 'y' || ev.ch == 'Y';
+}
+
+static char *nav_get_prompt_input(const char *prompt, const char *initial) {
+  static char buf[4096];
+  strlcpy(buf, initial, sizeof buf);
+  int cursor = strlen(buf);
+  int len = cursor;
+
+  while (1) {
+    draw_status_prompt(prompt, buf, cursor);
+    struct tb_event ev;
+    tb_poll_event(&ev);
+
+    int r = nav_handle_input_key(&ev, buf, &cursor, &len);
+    if (r == 1)
+      return buf;
+    if (r == -1)
+      return NULL;
+  }
+}
+
 static void nav_move_to_line(const int l) {
   if (g_cursor.idx == l)
     return;
@@ -209,7 +280,7 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     if (!g_items_in_middle_dir) {
       return 0;
     }
-    if (draw_confirmation("delete ", g_cursor.name)) {
+    if (nav_get_confirmation("delete ", g_cursor.name)) {
       os_exec_output(CMD_DELETE, g_cursor.name);
       g_cursor.idx = g_cursor.idx ? g_cursor.idx - 1 : 0;
       g_update.dir_middle = true;
@@ -226,17 +297,20 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     g_update.dir_right = true;
     tb_clear();
     return 0;
-  case 'r':
+  case 'r': {
     if (!g_items_in_middle_dir) {
       return 0;
     }
-    nav_switch_mode(MODE_COMMAND);
-    char quoted_name[sizeof g_cursor.name * 4 + 2];
-    shell_quote(g_cursor.name, quoted_name, sizeof quoted_name);
-    snprintf(g_current_command.chars, sizeof g_current_command.chars, "%s %s %s", CMD_RENAME, quoted_name, quoted_name);
-    g_current_command.len = strlen(g_current_command.chars);
-    g_current_command.cursor = g_current_command.len;
+    char *new_name = nav_get_prompt_input("rename: ", g_cursor.name);
+    if (new_name && new_name[0] && strcmp(new_name, g_cursor.name) != 0) {
+      os_move(g_cursor.name, new_name);
+      g_update.dir_middle = true;
+      g_update.dir_right = true;
+      tb_clear();
+    }
+    tb_hide_cursor();
     return 0;
+  }
   case 'n':
     if (g_search_idx_before == -1) {
       return 0;
@@ -280,16 +354,6 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
 
 static int nav_handle_event_command(const struct tb_event *ev) {
   switch (ev->key) {
-  case TB_KEY_ARROW_LEFT:
-    if (g_current_command.cursor > 0) {
-      g_current_command.cursor--;
-    }
-    return 0;
-  case TB_KEY_ARROW_RIGHT:
-    if (g_current_command.cursor < g_current_command.len) {
-      g_current_command.cursor++;
-    }
-    return 0;
   case TB_KEY_ARROW_UP:
   case TB_KEY_CTRL_P:
     command_history_prev();
@@ -298,25 +362,11 @@ static int nav_handle_event_command(const struct tb_event *ev) {
   case TB_KEY_CTRL_N:
     command_history_next();
     return 0;
-  case TB_KEY_CTRL_U:
-    command_mode_enter();
-    return 0;
-  case TB_KEY_CTRL_A:
-  case TB_KEY_HOME:
-    g_current_command.cursor = 0;
-    return 0;
-  case TB_KEY_CTRL_E:
-  case TB_KEY_END:
-    g_current_command.cursor = g_current_command.len;
-    return 0;
-  case TB_KEY_ESC:
-    if (g_search_idx_before >= 0) {
-      g_cursor.idx = g_search_idx_before;
-      g_search_idx_before = -1;
-    }
-    nav_switch_mode(MODE_NORMAL);
-    return 0;
-  case TB_KEY_ENTER:
+  }
+
+  const int r = nav_handle_input_key(ev, g_current_command.chars, &g_current_command.cursor, &g_current_command.len);
+
+  if (r == 1) {
     if (g_search_idx_before >= 0) {
       nav_switch_mode(MODE_NORMAL);
       tb_clear();
@@ -334,28 +384,22 @@ static int nav_handle_event_command(const struct tb_event *ev) {
     g_update.dir_right = true;
     tb_clear();
     return 0;
-  case TB_KEY_BACKSPACE2:
-    if (command_input_backspace()) {
-      if (g_search_idx_before >= 0) {
-        g_cursor.idx = g_search_idx_before;
-        g_search_idx_before = -1;
-      }
-      nav_switch_mode(MODE_NORMAL);
-      return 0;
-    }
+  }
+
+  const bool exit_to_normal =
+      r == -1 || ((ev->key == TB_KEY_BACKSPACE || ev->key == TB_KEY_BACKSPACE2) && g_current_command.cursor == 0);
+  if (exit_to_normal) {
     if (g_search_idx_before >= 0) {
-      set_cursor_idx_to_search(true, 0);
-      tb_clear();
+      g_cursor.idx = g_search_idx_before;
+      g_search_idx_before = -1;
     }
+    nav_switch_mode(MODE_NORMAL);
     return 0;
   }
 
-  if (ev->ch) {
-    command_input_add(ev->ch);
-    if (g_search_idx_before >= 0) {
-      set_cursor_idx_to_search(true, 0);
-      tb_clear();
-    }
+  if (g_search_idx_before >= 0 && (ev->ch || ev->key == TB_KEY_BACKSPACE || ev->key == TB_KEY_BACKSPACE2)) {
+    set_cursor_idx_to_search(true, 0);
+    tb_clear();
   }
 
   return 0;
