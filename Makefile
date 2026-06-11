@@ -15,7 +15,7 @@ $(TARGET): $(SOURCES) $(ALL_SRCS) $(HEADERS)
 	$(CC) $(CFLAGS) $(DEFINES) -o $(TARGET) $(SOURCES)
 
 clean:
-	@rm -f $(TARGET)
+	@rm -f $(TARGET) $(TARGET)-test
 
 install: $(TARGET)
 	cp $(TARGET) ~/.local/bin/
