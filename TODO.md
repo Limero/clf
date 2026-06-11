@@ -24,6 +24,8 @@
 * Handle collision with existing files when pasting after copy/move
 * Bind commands to keys in config.h (can be used for bookmarks with cd)
 * Ability to write to log file what is happening while running for debugging
+* Make rename command just ask for new name instead of showing the underlying command
+* Support showing multiline output from running command
 
 ## General improvements
 
@@ -32,4 +34,3 @@
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `pwd`
 * Make gap between columns smaller to match lf
-* Remove munit dependency

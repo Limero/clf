@@ -2,7 +2,7 @@
 #include "copy.c"
 #include "test.c"
 
-static MunitResult test_copy_file(const MunitParameter params[], void *data) {
+static void test_copy_file(void) {
   const char *c = __func__;
 
   char *f = test_create_file(c, "file");
@@ -14,10 +14,10 @@ static MunitResult test_copy_file(const MunitParameter params[], void *data) {
   test_assert_file_exists(c, "file");
   test_assert_file_exists(c, "dir/file");
 
-  return test_cleanup_files(c);
+  test_cleanup_files(c);
 }
 
-static MunitResult test_copy_directory(const MunitParameter params[], void *data) {
+static void test_copy_directory(void) {
   const char *c = __func__;
 
   char *src = test_create_dir(c, "source");
@@ -30,10 +30,10 @@ static MunitResult test_copy_directory(const MunitParameter params[], void *data
   test_assert_file_exists(c, "source/file");
   test_assert_file_exists(c, "target/source/file");
 
-  return test_cleanup_files(c);
+  test_cleanup_files(c);
 }
 
-static MunitResult test_move_file(const MunitParameter params[], void *data) {
+static void test_move_file(void) {
   const char *c = __func__;
 
   char *f = test_create_file(c, "file");
@@ -45,10 +45,10 @@ static MunitResult test_move_file(const MunitParameter params[], void *data) {
   test_assert_file_not_exists(c, "file");
   test_assert_file_exists(c, "target/file");
 
-  return test_cleanup_files(c);
+  test_cleanup_files(c);
 }
 
-static MunitResult test_move_directory(const MunitParameter params[], void *data) {
+static void test_move_directory(void) {
   const char *c = __func__;
 
   char *src = test_create_dir(c, "source");
@@ -62,10 +62,10 @@ static MunitResult test_move_directory(const MunitParameter params[], void *data
   test_assert_dir_not_exists(c, "source");
   test_assert_file_exists(c, "target/source/file");
 
-  return test_cleanup_files(c);
+  test_cleanup_files(c);
 }
 
-static MunitResult test_copy_file_free_file_name_before_pasting(const MunitParameter params[], void *data) {
+static void test_copy_file_free_file_name_before_pasting(void) {
   const char *c = __func__;
 
   char *f = test_create_file(c, "file");
@@ -78,10 +78,10 @@ static MunitResult test_copy_file_free_file_name_before_pasting(const MunitParam
   test_assert_file_exists(c, "file");
   test_assert_file_exists(c, "dir/file");
 
-  return test_cleanup_files(c);
+  test_cleanup_files(c);
 }
 
-static MunitResult test_copy_file_copy_twice(const MunitParameter params[], void *data) {
+static void test_copy_file_copy_twice(void) {
   const char *c = __func__;
 
   char *f1 = test_create_file(c, "file1");
@@ -97,10 +97,10 @@ static MunitResult test_copy_file_copy_twice(const MunitParameter params[], void
   test_assert_file_not_exists(c, "dir/file1");
   test_assert_file_exists(c, "dir/file2");
 
-  return test_cleanup_files(c);
+  test_cleanup_files(c);
 }
 
-static MunitResult test_copy_file_paste_twice(const MunitParameter params[], void *data) {
+static void test_copy_file_paste_twice(void) {
   const char *c = __func__;
 
   char *f = test_create_file(c, "file");
@@ -115,20 +115,19 @@ static MunitResult test_copy_file_paste_twice(const MunitParameter params[], voi
   test_assert_file_exists(c, "dir1/file");
   test_assert_file_exists(c, "dir2/file");
 
-  return test_cleanup_files(c);
+  test_cleanup_files(c);
 }
 
-MunitTest copy_tests[] = {
-    {"/copy_file", test_copy_file, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/copy_directory", test_copy_directory, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/move_file", test_move_file, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/move_directory", test_move_directory, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+Test copy_tests[] = {
+    {"/copy_file", test_copy_file},
+    {"/copy_directory", test_copy_directory},
+    {"/move_file", test_move_file},
+    {"/move_directory", test_move_directory},
 
     // edge cases
-    {"/copy_file_free_file_name_before_pasting", test_copy_file_free_file_name_before_pasting, NULL, NULL,
-     MUNIT_TEST_OPTION_NONE, NULL},
-    {"/copy_file_copy_twice", test_copy_file_copy_twice, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-    {"/copy_file_paste_twice", test_copy_file_paste_twice, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {"/copy_file_free_file_name_before_pasting", test_copy_file_free_file_name_before_pasting},
+    {"/copy_file_copy_twice", test_copy_file_copy_twice},
+    {"/copy_file_paste_twice", test_copy_file_paste_twice},
 
-    {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {NULL, NULL},
 };

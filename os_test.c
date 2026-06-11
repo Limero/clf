@@ -1,7 +1,7 @@
 #include "os.c"
 #include "test.c"
 
-static MunitResult test_os_exec_output(const MunitParameter params[], void *data) {
+static void test_os_exec_output(void) {
   // Info message from stdout
   {
     os_exec_output("echo 'hello'", "world");
@@ -36,12 +36,10 @@ static MunitResult test_os_exec_output(const MunitParameter params[], void *data
     assert(getcwd(cwd, sizeof(cwd)));
     test_assert_string_contains(cwd, "/tmp");
   }
-
-  return MUNIT_OK;
 }
 
-MunitTest os_tests[] = {
-    {"/exec_output", test_os_exec_output, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+Test os_tests[] = {
+    {"/exec_output", test_os_exec_output},
 
-    {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+    {NULL, NULL},
 };

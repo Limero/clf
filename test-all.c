@@ -33,28 +33,24 @@ static int count_test_files(char *base_path) {
   return count;
 }
 
-MunitResult test_all_testfiles_included(const MunitParameter params[], void *data);
+void test_all_testfiles_included(void);
 
-MunitTest main_tests[] = {
-    {"/all_testfiles_included", test_all_testfiles_included, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
-
-    {NULL, NULL, NULL, NULL, MUNIT_TEST_OPTION_NONE, NULL},
+Test main_tests[] = {
+    {"/all_testfiles_included", test_all_testfiles_included},
+    {NULL, NULL},
 };
 
-MunitSuite test_suites[] = {
-    {"main", main_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
-    {"copy", copy_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
-    {"os", os_tests, NULL, 1, MUNIT_SUITE_OPTION_NONE},
-
-    {NULL, NULL, NULL, 0, MUNIT_SUITE_OPTION_NONE},
+Suite test_suites[] = {
+    {"main", main_tests},
+    {"copy", copy_tests},
+    {"os", os_tests},
+    {NULL, NULL},
 };
 
-MunitResult test_all_testfiles_included(const MunitParameter params[], void *data) {
+void test_all_testfiles_included(void) {
   assert_int(count_test_files("."), ==, sizeof(test_suites) / sizeof(test_suites[0]) - 2);
-
-  return MUNIT_OK;
 }
 
-int main(int argc, char *argv[MUNIT_ARRAY_PARAM(argc + 1)]) {
-  return munit_suite_main(&(MunitSuite){"", NULL, test_suites, 1, MUNIT_SUITE_OPTION_NONE}, NULL, argc, argv);
+int main(void) {
+  return run_all(test_suites) > 0;
 }
