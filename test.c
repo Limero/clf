@@ -8,6 +8,27 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#define ANSI_RED "\033[31m"
+#define ANSI_GREEN "\033[32m"
+#define ANSI_RESET "\033[0m"
+
+#define COL_OUT(c) (color_stdout() ? (c) : "")
+#define COL_ERR(c) (color_stderr() ? (c) : "")
+
+static int color_stdout(void) {
+  static int c = -1;
+  if (c == -1)
+    c = isatty(STDOUT_FILENO);
+  return c;
+}
+
+static int color_stderr(void) {
+  static int c = -1;
+  if (c == -1)
+    c = isatty(STDERR_FILENO);
+  return c;
+}
+
 static jmp_buf _test_jmp_buf;
 static int _test_jmp_buf_valid;
 
@@ -15,7 +36,8 @@ static int _test_jmp_buf_valid;
 #define assert(expr)                                                                                                   \
   do {                                                                                                                 \
     if (!(expr)) {                                                                                                     \
-      fprintf(stderr, "assertion failed: %s (%s:%d)\n", #expr, __FILE__, __LINE__);                                    \
+      fprintf(stderr, "%sassertion failed: %s (%s:%d)%s\n", COL_ERR(ANSI_RED), #expr, __FILE__, __LINE__,              \
+              COL_ERR(ANSI_RESET));                                                                                    \
       if (_test_jmp_buf_valid)                                                                                         \
         longjmp(_test_jmp_buf, 1);                                                                                     \
       abort();                                                                                                         \
@@ -27,8 +49,8 @@ static int _test_jmp_buf_valid;
     int _ta = (a);                                                                                                     \
     int _tb = (b);                                                                                                     \
     if (!(_ta op _tb)) {                                                                                               \
-      fprintf(stderr, "assertion failed: %s %s %s (%d %s %d) [%s:%d]\n", #a, #op, #b, _ta, #op, _tb, __FILE__,         \
-              __LINE__);                                                                                               \
+      fprintf(stderr, "%sassertion failed: %s %s %s (%d %s %d) [%s:%d]%s\n", COL_ERR(ANSI_RED), #a, #op, #b, _ta, #op, \
+              _tb, __FILE__, __LINE__, COL_ERR(ANSI_RESET));                                                           \
       if (_test_jmp_buf_valid)                                                                                         \
         longjmp(_test_jmp_buf, 1);                                                                                     \
       abort();                                                                                                         \
@@ -40,8 +62,8 @@ static int _test_jmp_buf_valid;
     const char *_tsa = (a);                                                                                            \
     const char *_tsb = (b);                                                                                            \
     if (strcmp(_tsa, _tsb) != 0) {                                                                                     \
-      fprintf(stderr, "assertion failed: string %s == %s (\"%s\" == \"%s\") [%s:%d]\n", #a, #b, _tsa, _tsb, __FILE__,  \
-              __LINE__);                                                                                               \
+      fprintf(stderr, "%sassertion failed: string %s == %s (\"%s\" == \"%s\") [%s:%d]%s\n", COL_ERR(ANSI_RED), #a, #b, \
+              _tsa, _tsb, __FILE__, __LINE__, COL_ERR(ANSI_RESET));                                                    \
       if (_test_jmp_buf_valid)                                                                                         \
         longjmp(_test_jmp_buf, 1);                                                                                     \
       abort();                                                                                                         \
@@ -117,7 +139,7 @@ void test_assert_file_not_exists(const char *caller, char *path) {
 void test_assert_string_contains(const char *s, const char *substring) {
   char *res = strstr(s, substring);
   if (res == NULL) {
-    fprintf(stderr, "'%s' doesn't contain '%s'\n", s, substring);
+    fprintf(stderr, "%s'%s' doesn't contain '%s'%s\n", COL_ERR(ANSI_RED), s, substring, COL_ERR(ANSI_RESET));
     assert(res != NULL);
   }
 }
@@ -158,19 +180,19 @@ static int run_suite(Suite *suite) {
       _test_jmp_buf_valid = 1;
       suite->tests[i].func();
       _test_jmp_buf_valid = 0;
-      printf("ok\n");
+      printf("%sok%s\n", COL_OUT(ANSI_GREEN), COL_OUT(ANSI_RESET));
       passed++;
     } else {
       _test_jmp_buf_valid = 0;
-      printf("FAIL\n");
+      printf("%sFAIL%s\n", COL_OUT(ANSI_RED), COL_OUT(ANSI_RESET));
       failed++;
     }
   }
 
   if (failed > 0) {
-    printf("FAILED (%d/%d)\n", passed, passed + failed);
+    printf("%sFAILED (%d/%d)%s\n", COL_OUT(ANSI_RED), passed, passed + failed, COL_OUT(ANSI_RESET));
   } else {
-    printf("PASSED (%d/%d)\n", passed, passed + failed);
+    printf("%sPASSED (%d/%d)%s\n", COL_OUT(ANSI_GREEN), passed, passed + failed, COL_OUT(ANSI_RESET));
   }
 
   return failed;

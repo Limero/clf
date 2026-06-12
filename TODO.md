@@ -9,6 +9,7 @@
 * Renaming file to the name of different file overwrites it
 * With OPT_FULL_SHELL set to 0, long running commands like `:sleep 10` can't be cancelled with CTRL+C. It works with OPT_FULL_SHELL set to 1
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
+* Typing :a, pressing backspace once exits command mode, but it should require two backspaces. Same applies for search
 
 ## Features
 
@@ -37,3 +38,5 @@
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `:pwd`. Commands like `:touch` should still update. Probably have to check if files in directory were modified.
 * Make gap between columns smaller to match lf
 * See if more of the current functionality has config options in lf
+* Add comments to all config options
+* Show the > only when running slow commands to avoid flickering
