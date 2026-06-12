@@ -11,3 +11,7 @@ const unsigned int OPT_WRAP_SCAN = 1;
 const unsigned int OPT_NUMBER = 1;
 const unsigned int OPT_RELATIVE_NUMBER = 1;
 const unsigned int OPT_IGNORE_CASE = 1;
+
+// Run commands in $SHELL with rc files sourced instead of /bin/sh
+// Allows the use of aliases, but has a small performance impact
+const unsigned int OPT_FULL_SHELL = 1;

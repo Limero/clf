@@ -7,6 +7,8 @@
 * Yanking file in one instance doesn't update the others
 * Renaming file so it changes position in list will leave cursor on different file
 * Renaming file to the name of different file overwrites it
+* With OPT_FULL_SHELL set to 0, long running commands like `:sleep 10` can't be cancelled with CTRL+C. It works with OPT_FULL_SHELL set to 1
+* Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
 
 ## Features
 
@@ -21,16 +23,16 @@
 * Select files and copy/cut multiple
 * Show progress for copy/move
 * Tab completion for commands
-* Add support for shell aliases for commands
 * Handle collision with existing files when pasting after copy/move
 * Bind commands to keys in config.h (can be used for bookmarks with cd)
 * Ability to write to log file what is happening while running for debugging
 * Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
+* Support running commands with fish shell, instead of falling back on bash
 
 ## General improvements
 
-* Do more partial clearings instead full `tb_clear()`
+* Do more partial clearings instead of full `tb_clear()`. Maybe the draw functions for each column should trigger clear if there are changes.
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `:pwd`. Commands like `:touch` should still update. Probably have to check if files in directory were modified.
 * Make gap between columns smaller to match lf

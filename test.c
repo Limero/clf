@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 static jmp_buf _test_jmp_buf;
@@ -128,6 +129,8 @@ void test_cleanup_files(const char *caller) {
   pid_t pid = fork();
   if (pid == 0) {
     execl("/bin/rm", "/bin/rm", "-r", full_path, (char *)0);
+  } else if (pid > 0) {
+    waitpid(pid, NULL, 0);
   }
 }
 
