@@ -27,7 +27,7 @@ release: CFLAGS = -std=c99 -Wall -Werror -Wextra -pedantic -Wno-unused-parameter
 release: $(TARGET)
 
 test: test-all.c
-	$(CC) $(CFLAGS) -std=c11 -Wno-unused-variable $(DEFINES) -o $(TARGET)-test test-all.c && ./$(TARGET)-test
+	$(CC) $(CFLAGS) -Wno-unused-variable $(DEFINES) -o $(TARGET)-test test-all.c && time ./$(TARGET)-test
 
 lint:
 	clang-format -i $(ALL_SRCS) $(HEADERS)
