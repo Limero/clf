@@ -2,7 +2,6 @@
 
 ## Bugs
 
-* Creating new file before the cursor item in list with command will move cursor to different item
 * Yanking file in one instance doesn't update the others
 * Renaming file so it changes position in list will leave cursor on different file
 * Renaming file to the name of different file overwrites it

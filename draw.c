@@ -48,9 +48,19 @@ static void reload_dir_middle(void) {
   }
 
   g_items_in_middle_dir = n;
-  if (g_cursor.idx >= g_items_in_middle_dir)
-    g_cursor.idx = MAX(0, g_items_in_middle_dir - 1);
   g_update.dir_middle = false;
+
+  // When items are added/removed with commands the cursor may land on the wrong item
+  if (g_cursor.idx >= n) {
+    g_cursor.idx = MAX(0, g_items_in_middle_dir - 1);
+  } else if (g_cursor.name[0] != '\0' && strcmp(g_namelist_middle[g_cursor.idx]->d_name, g_cursor.name) != 0) {
+    for (int i = 0; i < n; i++) {
+      if (strcmp(g_namelist_middle[i]->d_name, g_cursor.name) == 0) {
+        g_cursor.idx = i;
+        break;
+      }
+    }
+  }
 }
 
 void set_cursor_idx_to_name(const char *name) {
@@ -281,6 +291,10 @@ static void draw_right_column(const int offset_x, const int width) {
   int y = 1;
 
   if (g_update.dir_right) {
+    char prev_name[sizeof g_cursor.name] = "";
+    if (g_namelist_right != NULL && g_right_column_idx < g_items_in_right_dir)
+      strlcpy(prev_name, g_namelist_right[g_right_column_idx]->d_name, sizeof prev_name);
+
     if (g_namelist_right != NULL) {
       for (int i = 0; i < g_items_in_right_dir; i++) {
         free(g_namelist_right[i]);
@@ -306,8 +320,18 @@ static void draw_right_column(const int offset_x, const int width) {
     }
 
     g_items_in_right_dir = n;
-    if (g_right_column_idx >= g_items_in_right_dir)
+
+    // When items are added/removed with commands the cursor may land on the wrong item
+    if (g_right_column_idx >= n) {
       g_right_column_idx = MAX(0, g_items_in_right_dir - 1);
+    } else if (prev_name[0] != '\0' && strcmp(g_namelist_right[g_right_column_idx]->d_name, prev_name) != 0) {
+      for (int i = 0; i < n; i++) {
+        if (strcmp(g_namelist_right[i]->d_name, prev_name) == 0) {
+          g_right_column_idx = i;
+          break;
+        }
+      }
+    }
   }
 
   if (g_items_in_right_dir == 0) {
