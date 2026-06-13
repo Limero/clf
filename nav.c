@@ -377,8 +377,7 @@ static int nav_handle_event_command(const struct tb_event *ev) {
       return -1;
     }
     command_history_add();
-    draw_status_running_command();
-    os_exec_output(g_current_command.chars, "");
+    os_exec_output_deferred(g_current_command.chars, "", draw_status_running_command, CMD_INDICATOR_DELAY_MS);
     nav_switch_mode(MODE_NORMAL);
     g_update.dir_left = true;
     g_update.dir_middle = true;

@@ -38,4 +38,3 @@
 * Make gap between columns smaller to match lf
 * See if more of the current functionality has config options in lf
 * Add comments to all config options
-* Show the > only when running slow commands to avoid flickering

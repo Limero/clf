@@ -65,17 +65,17 @@ static void test_os_popen_full_shell_basic(void) {
   int status;
 
   // Simple command that echoes
-  status = os_popen_full_shell("echo hello; exit 0", buf, sizeof buf);
+  status = os_popen_full_shell("echo hello; exit 0", buf, sizeof buf, NULL, 0);
   assert_int(status, ==, 0);
   assert_string_equal(buf, "hello");
 
   // Multiple words
-  status = os_popen_full_shell("echo hello world; exit 0", buf, sizeof buf);
+  status = os_popen_full_shell("echo hello world; exit 0", buf, sizeof buf, NULL, 0);
   assert_int(status, ==, 0);
   assert_string_equal(buf, "hello world");
 
   // Command that fails returns non-zero
-  status = os_popen_full_shell("exit 42", buf, sizeof buf);
+  status = os_popen_full_shell("exit 42", buf, sizeof buf, NULL, 0);
   assert_int(status, ==, 42);
 }
 
@@ -84,13 +84,13 @@ static void test_os_popen_full_shell_signal_handlers(void) {
 
   sigaction(SIGINT, NULL, &sa_before);
   char buf[4096];
-  os_popen_full_shell("echo test; exit 0", buf, sizeof buf);
+  os_popen_full_shell("echo test; exit 0", buf, sizeof buf, NULL, 0);
   sigaction(SIGINT, NULL, &sa_after);
   assert(sa_before.sa_handler == sa_after.sa_handler);
   assert_int(sa_before.sa_flags, ==, sa_after.sa_flags);
 
   sigaction(SIGQUIT, NULL, &sa_before);
-  os_popen_full_shell("echo test; exit 0", buf, sizeof buf);
+  os_popen_full_shell("echo test; exit 0", buf, sizeof buf, NULL, 0);
   sigaction(SIGQUIT, NULL, &sa_after);
   assert(sa_before.sa_handler == sa_after.sa_handler);
   assert_int(sa_before.sa_flags, ==, sa_after.sa_flags);

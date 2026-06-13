@@ -11,6 +11,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
+#include <poll.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -157,7 +158,8 @@ static bool build_cmd(char *cmd, size_t cmd_size, const char *c, const char *arg
   return n >= 0 && (size_t)n < cmd_size;
 }
 
-static int os_popen_full_shell(const char *cmd, char *buf, size_t buf_size) {
+static int os_popen_full_shell(const char *cmd, char *buf, size_t buf_size,
+                                void (*indicator_cb)(void), int threshold_ms) {
   const char *shell = getenv("SHELL");
   if (!shell)
     shell = "sh";
@@ -238,8 +240,26 @@ static int os_popen_full_shell(const char *cmd, char *buf, size_t buf_size) {
 
   size_t total = 0;
   ssize_t n;
-  while (total + 1 < buf_size && (n = read(stdoutpipe[0], buf + total, buf_size - total - 1)) > 0)
-    total += n;
+  bool indicator_shown = false;
+  struct pollfd pfd = {.fd = stdoutpipe[0], .events = POLLIN};
+
+  while (total + 1 < buf_size) {
+    int timeout = (indicator_shown || indicator_cb == NULL) ? -1 : threshold_ms;
+    int pret = poll(&pfd, 1, timeout);
+
+    if (pret > 0) {
+      n = read(stdoutpipe[0], buf + total, buf_size - total - 1);
+      if (n <= 0)
+        break;
+      total += n;
+    } else if (pret == 0) {
+      indicator_cb();
+      indicator_shown = true;
+    } else {
+      break;
+    }
+  }
+
   if (total > 0 && buf[total - 1] == '\n')
     total--;
   buf[total] = '\0';
@@ -281,7 +301,8 @@ void os_exec(const char *c, const char *arg) {
   }
 }
 
-void os_exec_output(const char *c, const char *arg) {
+void os_exec_output_deferred(const char *c, const char *arg,
+                              void (*indicator_cb)(void), int threshold_ms) {
   char cmd[4096];
 
   const char *marker = "--CWD_MARKER--";
@@ -295,7 +316,7 @@ void os_exec_output(const char *c, const char *arg) {
 
   int status;
   if (OPT_FULL_SHELL) {
-    status = os_popen_full_shell(cmd, g_msg, sizeof g_msg);
+    status = os_popen_full_shell(cmd, g_msg, sizeof g_msg, indicator_cb, threshold_ms);
     if (status == -1) {
       snprintf(g_msg, sizeof g_msg, "(%s) failed to run command", __func__);
       g_msg_type = MSG_TYPE_ERROR;
@@ -312,19 +333,33 @@ void os_exec_output(const char *c, const char *arg) {
 
     const size_t msg_len = sizeof(g_msg);
     size_t total = 0;
-    while (!feof(fp) && total + 1 < msg_len) {
-      size_t n = fread(g_msg + total, 1, msg_len - total - 1, fp);
-      if (n == 0) {
-        if (ferror(fp)) {
-          if (pclose(fp) == -1) {
-            snprintf(g_msg, sizeof g_msg, "(%s pclose) %s", __func__, strerror(errno));
-            g_msg_type = MSG_TYPE_ERROR;
+    bool indicator_shown = false;
+    int fd = fileno(fp);
+    struct pollfd pfd = {.fd = fd, .events = POLLIN};
+
+    while (total + 1 < msg_len) {
+      int timeout = (indicator_shown || indicator_cb == NULL) ? -1 : threshold_ms;
+      int pret = poll(&pfd, 1, timeout);
+
+      if (pret > 0) {
+        size_t n = fread(g_msg + total, 1, msg_len - total - 1, fp);
+        if (n == 0) {
+          if (ferror(fp)) {
+            if (pclose(fp) == -1) {
+              snprintf(g_msg, sizeof g_msg, "(%s pclose) %s", __func__, strerror(errno));
+              g_msg_type = MSG_TYPE_ERROR;
+            }
+            return;
           }
-          return;
+          break;
         }
+        total += n;
+      } else if (pret == 0) {
+        indicator_cb();
+        indicator_shown = true;
+      } else {
         break;
       }
-      total += n;
     }
     if (total > 0 && g_msg[total - 1] == '\n')
       total--;
@@ -361,4 +396,8 @@ void os_exec_output(const char *c, const char *arg) {
       g_cursor.idx = 0;
     }
   }
+}
+
+void os_exec_output(const char *c, const char *arg) {
+  os_exec_output_deferred(c, arg, NULL, 0);
 }
