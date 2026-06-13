@@ -51,6 +51,7 @@ static int nav_handle_input_key(const struct tb_event *ev, char *buf, int *curso
 }
 
 static bool nav_get_confirmation(const char *msg1, const char *msg2) {
+  tb_hide_cursor();
   draw_status_confirmation(msg1, msg2);
   struct tb_event ev = {0};
   tb_poll_event(&ev);
@@ -350,6 +351,13 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     }
     char *new_name = nav_get_prompt_input("rename: ", g_cursor.name);
     if (new_name && new_name[0] && strcmp(new_name, g_cursor.name) != 0) {
+      char dest_path[PATH_MAX * 2];
+      snprintf(dest_path, sizeof dest_path, "%s/%s", g_cwd, new_name);
+      if (access(dest_path, F_OK) == 0) {
+        if (!nav_get_confirmation("replace ", new_name)) {
+          return 0;
+        }
+      }
       os_move(g_cursor.name, new_name);
       memcpy(g_cursor.name, new_name, sizeof(g_cursor.name));
       g_update.dir_middle = true;
