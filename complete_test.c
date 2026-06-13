@@ -79,7 +79,7 @@ static void test_command_matching(void) {
 
 static void test_path_matching(void) {
   const char *c = __func__;
-  char *dir = test_create_dir(c, "sub");
+  const char *dir = test_create_dir(c, "sub");
   test_create_file(c, "sub/file1.txt");
   test_create_file(c, "sub/file2.txt");
   test_create_file(c, "sub/other.txt");
@@ -321,8 +321,8 @@ static void test_path_matching_tilde(void) {
   snprintf(dpath, sizeof dpath, "%s/subdir", home_dir);
   mkdir(dpath, 0700);
 
-  char *orig_homepath = g_homepath;
-  int orig_homepath_len = g_homepath_len;
+  char *const orig_homepath = g_homepath;
+  const int orig_homepath_len = g_homepath_len;
   g_homepath = home_dir;
   g_homepath_len = strlen(g_homepath);
 

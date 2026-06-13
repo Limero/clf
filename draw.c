@@ -441,7 +441,7 @@ static void draw_status_normal(const int repeat) {
   }
 
   char path[sizeof(g_cwd) + 1 /* slash */ + sizeof(g_cursor.name)];
-  ssize_t needed = snprintf(path, sizeof(path), "%s/%s", g_cwd, g_cursor.name);
+  const ssize_t needed = snprintf(path, sizeof(path), "%s/%s", g_cwd, g_cursor.name);
   if (needed < 0 || (size_t)needed >= sizeof(path)) {
     snprintf(g_msg, sizeof g_msg, "Path too long (needed %zd bytes)\n", needed + 1);
     g_msg_type = MSG_TYPE_ERROR;
@@ -455,7 +455,7 @@ static void draw_status_normal(const int repeat) {
     return;
   }
 
-  char *status_str = status_normal_string(&st);
+  const char *status_str = status_normal_string(&st);
   tb_printf(0, tb_height() - 1, COLOR_STATUS_PERM, COLOR_DEFAULT, "%.10s", status_str);
   tb_print(11, tb_height() - 1, COLOR_DEFAULT, COLOR_DEFAULT, status_str + 11);
 

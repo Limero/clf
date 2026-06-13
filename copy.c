@@ -14,7 +14,7 @@
 static char g_clipboard_buf[CLIPBOARD_BUF_SIZE];
 static char g_clipboard_paths[MAX_SELECTED][PATH_MAX];
 
-static int parse_clipboard(char *buf, bool *is_move, char (*paths)[PATH_MAX], int max_paths) {
+static int parse_clipboard(char *buf, bool *is_move, char (*paths)[PATH_MAX], const int max_paths) {
   assert(buf != NULL && is_move != NULL && paths != NULL);
   char *nl = strchr(buf, '\n');
   if (!nl)

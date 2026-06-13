@@ -70,7 +70,7 @@ static int _test_jmp_buf_valid;
     }                                                                                                                  \
   } while (0)
 
-char *test_create_dir(const char *caller, char *path) {
+char *test_create_dir(const char *caller, const char *path) {
   struct stat st = {0};
   char *full_path = calloc(500, 1);
 
@@ -88,7 +88,7 @@ char *test_create_dir(const char *caller, char *path) {
   return full_path;
 }
 
-char *test_create_file(const char *caller, char *path) {
+char *test_create_file(const char *caller, const char *path) {
   struct stat st = {0};
   char *full_path = calloc(500, 1);
 
@@ -106,7 +106,7 @@ char *test_create_file(const char *caller, char *path) {
   return full_path;
 }
 
-void test_assert_dir_exists(const char *caller, char *path) {
+void test_assert_dir_exists(const char *caller, const char *path) {
   char full_path[500];
   sprintf(full_path, "%s/%s/%s", "/tmp", caller, path);
 
@@ -114,7 +114,7 @@ void test_assert_dir_exists(const char *caller, char *path) {
   assert_int(stat(full_path, &st), ==, 0);
 }
 
-void test_assert_dir_not_exists(const char *caller, char *path) {
+void test_assert_dir_not_exists(const char *caller, const char *path) {
   char full_path[500];
   sprintf(full_path, "%s/%s/%s", "/tmp", caller, path);
 
@@ -122,14 +122,14 @@ void test_assert_dir_not_exists(const char *caller, char *path) {
   assert_int(stat(full_path, &st), ==, -1);
 }
 
-void test_assert_file_exists(const char *caller, char *path) {
+void test_assert_file_exists(const char *caller, const char *path) {
   char full_path[500];
   sprintf(full_path, "%s/%s/%s", "/tmp", caller, path);
 
   assert_int(access(full_path, F_OK), ==, 0);
 }
 
-void test_assert_file_not_exists(const char *caller, char *path) {
+void test_assert_file_not_exists(const char *caller, const char *path) {
   char full_path[500];
   sprintf(full_path, "%s/%s/%s", "/tmp", caller, path);
 
@@ -168,7 +168,7 @@ typedef struct {
   Test *tests;
 } Suite;
 
-static int run_suite(Suite *suite) {
+static int run_suite(const Suite *suite) {
   int passed = 0;
   int failed = 0;
 
@@ -198,7 +198,7 @@ static int run_suite(Suite *suite) {
   return failed;
 }
 
-static int run_all(Suite *suites) {
+static int run_all(const Suite *suites) {
   int total_failed = 0;
   for (int i = 0; suites[i].prefix != NULL; i++) {
     total_failed += run_suite(&suites[i]);

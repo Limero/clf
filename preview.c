@@ -39,7 +39,7 @@ static void preview_stop_previous(void) {
   }
 }
 
-static bool flush_line(int x, int *y, int width, const char *buf, size_t len, int *lsp) {
+static bool flush_line(const int x, int *y, const int width, const char *buf, const size_t len, int *lsp) {
   tb_printf(x, *y, COLOR_DEFAULT, COLOR_DEFAULT, "%-*.*s", width, (int)len, buf);
   if (*y == tb_height() - 2) {
     tb_present();
@@ -78,7 +78,7 @@ static void *preview_worker(void *arg) {
       continue;
     }
 
-    pid_t pid = fork();
+    const pid_t pid = fork();
     if (pid == -1) {
       close(pipefd[0]);
       close(pipefd[1]);
@@ -102,7 +102,7 @@ static void *preview_worker(void *arg) {
     close(pipefd[1]);
     g_preview_child_pid = pid;
 
-    int flags = fcntl(pipefd[0], F_GETFL, 0);
+    const int flags = fcntl(pipefd[0], F_GETFL, 0);
     fcntl(pipefd[0], F_SETFL, flags | O_NONBLOCK);
 
     const int preview_x = current_offset_x + 3;

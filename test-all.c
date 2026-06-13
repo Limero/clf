@@ -4,7 +4,7 @@
 #include "copy_test.c"
 #include "os_test.c"
 
-static int count_test_files(char *base_path) {
+static int count_test_files(const char *base_path) {
   int count = 0;
 
   char path[1000];

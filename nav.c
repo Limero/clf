@@ -301,7 +301,7 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
         return 0;
       }
       char cwd_with_cursor[PATH_MAX];
-      int needed = snprintf(cwd_with_cursor, PATH_MAX, "%s/%s", g_cwd, g_cursor.name);
+      const int needed = snprintf(cwd_with_cursor, PATH_MAX, "%s/%s", g_cwd, g_cursor.name);
       if (needed < 0 || needed >= PATH_MAX) {
         snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
         g_msg_type = MSG_TYPE_ERROR;

@@ -144,14 +144,14 @@ void complete_cache(void) {
   g_cache_ready = true;
 }
 
-static bool is_escaped_space(const char *buf, int space_pos) {
+static bool is_escaped_space(const char *buf, const int space_pos) {
   int bs = 0;
   for (int i = space_pos - 1; i >= 0 && buf[i] == '\\'; i--)
     bs++;
   return bs % 2 == 1;
 }
 
-static void complete_get_word_bounds(const char *buf, int cursor, int *start, int *end) {
+static void complete_get_word_bounds(const char *buf, const int cursor, int *start, int *end) {
   *start = cursor;
   while (*start > 0) {
     if (buf[*start - 1] == ' ' && !is_escaped_space(buf, *start - 1))
@@ -167,7 +167,8 @@ static void complete_get_word_bounds(const char *buf, int cursor, int *start, in
   }
 }
 
-static void complete_word_at_cursor(const char *buf, int cursor, char *word, int word_size, bool *is_first) {
+static void complete_word_at_cursor(const char *buf, const int cursor, char *word, const int word_size,
+                                    bool *is_first) {
   int start, end;
   complete_get_word_bounds(buf, cursor, &start, &end);
 
@@ -283,7 +284,7 @@ static void complete_generate_paths(const char *prefix, const bool dirs_only) {
   free(entries);
 }
 
-static void complete_generate(const char *word, bool is_first) {
+static void complete_generate(const char *word, const bool is_first) {
   g_match_count = 0;
 
   if (is_first) {

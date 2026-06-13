@@ -40,7 +40,7 @@ void command_history_prev(void) {
   }
   command_history.cursor--;
   strlcpy(g_current_command.chars, command_history.history[command_history.cursor], sizeof(g_current_command.chars));
-  int len = strlen(g_current_command.chars);
+  const int len = strlen(g_current_command.chars);
   g_current_command.len = len;
   g_current_command.cursor = len;
 }

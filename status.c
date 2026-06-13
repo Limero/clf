@@ -49,7 +49,7 @@ static void status_permstring(const mode_t mode, char out[11]) {
 
 // builds a human readible size string like "128.9K"
 static void status_human_size(const off_t size, char out[8]) {
-  const char *units[] = {"B", "K", "M", "G", "T", "P"};
+  static const char *const units[] = {"B", "K", "M", "G", "T", "P"};
   double s = (double)size;
   int ui = 0;
   while (s >= 1024.0 && ui < (int)(sizeof(units) / sizeof(*units)) - 1) {
@@ -68,10 +68,10 @@ char *status_normal_string(const struct stat *st) {
   char perms[11];
   status_permstring(st->st_mode, perms);
 
-  struct passwd *pw = getpwuid(st->st_uid);
+  const struct passwd *pw = getpwuid(st->st_uid);
   const char *uname = pw ? pw->pw_name : "UNKNOWN";
 
-  struct group *gr = getgrgid(st->st_gid);
+  const struct group *gr = getgrgid(st->st_gid);
   const char *gname = gr ? gr->gr_name : "UNKNOWN";
 
   char hsize[8];

@@ -48,7 +48,7 @@ static bool os_run(const char *func, const char *file, char *const argv[]) {
     return false;
   }
 
-  pid_t pid = fork();
+  const pid_t pid = fork();
   if (pid == -1) {
     close(pipefd[0]);
     close(pipefd[1]);
@@ -80,7 +80,7 @@ static bool os_run(const char *func, const char *file, char *const argv[]) {
     return true;
   }
 
-  ssize_t n = read(pipefd[0], g_msg, sizeof(g_msg) - 1);
+  const ssize_t n = read(pipefd[0], g_msg, sizeof(g_msg) - 1);
   close(pipefd[0]);
   if (n > 0) {
     g_msg[n] = '\0';
@@ -146,7 +146,7 @@ static void popen_cleanup(const int *stdinpipe, const int *stdoutpipe, const boo
   sigaction(SIGPIPE, &sa_old[2], NULL);
 }
 
-static bool build_cmd(char *cmd, size_t cmd_size, const char *c, const char *arg, const char *suffix) {
+static bool build_cmd(char *cmd, const size_t cmd_size, const char *c, const char *arg, const char *suffix) {
   char name_quoted[sizeof g_cursor.name * 4 + 2];
   char arg_quoted[sizeof g_cursor.name * 4 + 2] = "";
 
@@ -154,12 +154,12 @@ static bool build_cmd(char *cmd, size_t cmd_size, const char *c, const char *arg
   if (arg[0] != '\0')
     shell_quote(arg, arg_quoted, sizeof arg_quoted);
 
-  int n = snprintf(cmd, cmd_size, "f=%s %s %s%s", name_quoted, c, arg_quoted, suffix);
+  const int n = snprintf(cmd, cmd_size, "f=%s %s %s%s", name_quoted, c, arg_quoted, suffix);
   return n >= 0 && (size_t)n < cmd_size;
 }
 
-static int os_popen_full_shell(const char *cmd, char *buf, size_t buf_size, void (*indicator_cb)(void),
-                               int threshold_ms) {
+static int os_popen_full_shell(const char *cmd, char *buf, const size_t buf_size, void (*indicator_cb)(void),
+                               const int threshold_ms) {
   const char *shell = getenv("SHELL");
   if (!shell)
     shell = "sh";
@@ -187,7 +187,7 @@ static int os_popen_full_shell(const char *cmd, char *buf, size_t buf_size, void
   }
 
   struct termios saved_tios;
-  bool has_term = isatty(STDIN_FILENO) == 1 && tcgetattr(STDIN_FILENO, &saved_tios) == 0;
+  const bool has_term = isatty(STDIN_FILENO) == 1 && tcgetattr(STDIN_FILENO, &saved_tios) == 0;
   if (has_term) {
     struct termios tios = saved_tios;
     tios.c_lflag |= ISIG;
@@ -210,7 +210,7 @@ static int os_popen_full_shell(const char *cmd, char *buf, size_t buf_size, void
     return -1;
   }
 
-  pid_t pid = fork();
+  const pid_t pid = fork();
   if (pid == -1) {
     popen_cleanup(stdinpipe, stdoutpipe, has_term, &saved_tios, sa_old);
     return -1;
@@ -301,7 +301,7 @@ void os_exec(const char *c, const char *arg) {
   }
 }
 
-void os_exec_output_deferred(const char *c, const char *arg, void (*indicator_cb)(void), int threshold_ms) {
+void os_exec_output_deferred(const char *c, const char *arg, void (*indicator_cb)(void), const int threshold_ms) {
   char cmd[4096];
 
   const char *marker = "--CWD_MARKER--";
