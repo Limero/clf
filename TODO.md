@@ -9,6 +9,7 @@
 * Renaming file to the name of different file overwrites it
 * With OPT_FULL_SHELL set to 0, long running commands like `:sleep 10` can't be cancelled with CTRL+C. It works with OPT_FULL_SHELL set to 1
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
+* Possible to overflow when adding to command history and if the commands are too long
 
 ## Features
 
@@ -29,6 +30,7 @@
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
 * Make command tab completion work with ~
+* Add OPT_CMD_HISTORY to disable command history completely
 
 ## General improvements
 

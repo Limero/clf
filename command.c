@@ -5,7 +5,7 @@
 #include <string.h>
 
 static struct {
-  char history[100][256];
+  char history[100][256]; // ~25KB
   int count;
   int cursor;
 } command_history;

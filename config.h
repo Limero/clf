@@ -17,6 +17,7 @@ const unsigned int OPT_IGNORE_CASE = 1;
 const unsigned int OPT_FULL_SHELL = 1;
 
 // Enable tab completion for commands in command mode (PATH executables + shell aliases)
+// Will allocate an extra ~4MB static memory
 const unsigned int OPT_CMD_COMPLETE = 1;
 
 // Delay in ms before showing the ">" indicator when running a command

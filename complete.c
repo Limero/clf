@@ -9,13 +9,14 @@
 #include <unistd.h>
 
 #define COMPLETION_MAX 4096
+#define COMPLETION_MAX_MATCHES 100
 #define COMPLETION_NAME_LEN 1024
 
-static char g_cache_cmds[COMPLETION_MAX][COMPLETION_NAME_LEN];
+static char g_cache_cmds[COMPLETION_MAX][COMPLETION_NAME_LEN]; // 4MB
 static int g_cache_cmd_count = 0;
 static bool g_cache_ready = false;
 
-static char g_matches[COMPLETION_MAX][COMPLETION_NAME_LEN];
+static char g_matches[COMPLETION_MAX_MATCHES][COMPLETION_NAME_LEN]; // ~100KB
 static int g_match_count = 0;
 static int g_match_idx = 0;
 static char g_last_prefix[COMPLETION_NAME_LEN] = "";
@@ -148,7 +149,7 @@ static void complete_word_at_cursor(const char *buf, int cursor, char *word, int
 
 static void complete_generate_commands(const char *prefix) {
   const int prefix_len = strlen(prefix);
-  for (int i = 0; i < g_cache_cmd_count && g_match_count < COMPLETION_MAX; i++) {
+  for (int i = 0; i < g_cache_cmd_count && g_match_count < COMPLETION_MAX_MATCHES; i++) {
     if (strncasecmp(g_cache_cmds[i], prefix, prefix_len) == 0) {
       strlcpy(g_matches[g_match_count], g_cache_cmds[i], COMPLETION_NAME_LEN);
       g_match_count++;
@@ -194,7 +195,7 @@ static void complete_generate_paths(const char *prefix) {
       continue;
     }
 
-    if (strncasecmp(name, file_part, file_part_len) == 0 && g_match_count < COMPLETION_MAX) {
+    if (strncasecmp(name, file_part, file_part_len) == 0 && g_match_count < COMPLETION_MAX_MATCHES) {
       if (dir_is_dot) {
         strlcpy(g_matches[g_match_count], name, COMPLETION_NAME_LEN);
       } else {

@@ -421,7 +421,13 @@ static void draw_status_command(void) {
 
   if (OPT_CMD_COMPLETE && g_search_idx_before < 0 && complete_is_active()) {
     char info[64];
-    snprintf(info, sizeof info, " [%d/%d]", complete_match_idx() + 1, complete_match_count());
+    const int count = complete_match_count();
+    const int idx = complete_match_idx() + 1;
+    if (count >= COMPLETION_MAX_MATCHES) {
+      snprintf(info, sizeof info, " [%d/99+]", idx);
+    } else {
+      snprintf(info, sizeof info, " [%d/%d]", idx, count);
+    }
     tb_print(1 + g_current_command.len, y, COLOR_STATUS_PERM, COLOR_DEFAULT, info);
   }
 
