@@ -195,6 +195,79 @@ static void test_complete_apply_shorter(void) {
   assert_string_equal(g_current_command.chars, "cat");
 }
 
+static void test_complete_cycle_with_spaces(void) {
+  const char *c = __func__;
+  g_cache_cmd_count = 0;
+  strcpy(g_cache_cmds[g_cache_cmd_count++], "cd");
+  g_cache_ready = true;
+
+  const char *dir = test_create_dir(c, "");
+  test_create_file(c, "a.txt");
+  test_create_file(c, "b file.txt");
+  test_create_file(c, "c.txt");
+
+  char prev[PATH_MAX];
+  assert(getcwd(prev, sizeof prev));
+  assert_int(chdir(dir), ==, 0);
+
+  // "cd " to trigger path completion
+  strcpy(g_current_command.chars, "cd ");
+  g_current_command.len = 3;
+  g_current_command.cursor = 3;
+
+  // First tab finds all matches, applies first (a.txt)
+  assert(complete_handle_tab());
+  assert_string_equal(g_current_command.chars, "cd a.txt");
+
+  // Second tab cycles to b file.txt (escaped)
+  assert(complete_handle_tab());
+  assert_string_equal(g_current_command.chars, "cd b\\ file.txt");
+
+  // Third tab cycles to c.txt
+  assert(complete_handle_tab());
+  assert_string_equal(g_current_command.chars, "cd c.txt");
+
+  // Fourth tab wraps back to a.txt
+  assert(complete_handle_tab());
+  assert_string_equal(g_current_command.chars, "cd a.txt");
+
+  g_cache_ready = false;
+  assert_int(chdir(prev), ==, 0);
+  test_cleanup_files(c);
+}
+
+static void test_path_matching_with_spaces(void) {
+  const char *c = __func__;
+  const char *dir = test_create_dir(c, "");
+  test_create_file(c, "my file.txt");
+  test_create_file(c, "file.txt");
+  test_create_file(c, "file\\2.txt");
+
+  char prev[PATH_MAX];
+  assert(getcwd(prev, sizeof prev));
+  assert_int(chdir(dir), ==, 0);
+
+  g_match_count = 0;
+  complete_generate_paths("");
+  bool found_escaped_space = false;
+  bool found_escaped_backslash = false;
+  bool found_plain = false;
+  for (int i = 0; i < g_match_count; i++) {
+    if (strcmp(g_matches[i], "my\\ file.txt") == 0)
+      found_escaped_space = true;
+    if (strcmp(g_matches[i], "file\\\\2.txt") == 0)
+      found_escaped_backslash = true;
+    if (strcmp(g_matches[i], "file.txt") == 0)
+      found_plain = true;
+  }
+  assert(found_escaped_space);
+  assert(found_escaped_backslash);
+  assert(found_plain);
+
+  assert_int(chdir(prev), ==, 0);
+  test_cleanup_files(c);
+}
+
 static void test_complete_resets_on_type(void) {
   g_cache_cmd_count = 0;
   strcpy(g_cache_cmds[g_cache_cmd_count++], "cat");
@@ -231,6 +304,8 @@ Test complete_tests[] = {
     {"/complete_cycle", test_complete_cycle},
     {"/complete_apply_shorter", test_complete_apply_shorter},
     {"/complete_resets_on_type", test_complete_resets_on_type},
+    {"/path_matching_with_spaces", test_path_matching_with_spaces},
+    {"/complete_cycle_with_spaces", test_complete_cycle_with_spaces},
 
     {NULL, NULL},
 };

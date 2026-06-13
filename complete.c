@@ -35,7 +35,26 @@ bool complete_is_active(void) {
 }
 
 static int complete_cmp(const void *a, const void *b) {
+  if (OPT_IGNORE_CASE)
+    return strcasecmp((const char *)a, (const char *)b);
   return strcmp((const char *)a, (const char *)b);
+}
+
+static void escape_path(const char *src, char *dst, size_t dst_size) {
+  while (*src && dst_size > 1) {
+    if (*src == '\\' || *src == ' ') {
+      if (dst_size < 3)
+        break;
+      *dst++ = '\\';
+      *dst++ = *src;
+      dst_size -= 2;
+    } else {
+      *dst++ = *src;
+      dst_size--;
+    }
+    src++;
+  }
+  *dst = '\0';
 }
 
 static const char *complete_shell_name(void) {
@@ -123,14 +142,27 @@ void complete_cache(void) {
   g_cache_ready = true;
 }
 
+static bool is_escaped_space(const char *buf, int space_pos) {
+  int bs = 0;
+  for (int i = space_pos - 1; i >= 0 && buf[i] == '\\'; i--)
+    bs++;
+  return bs % 2 == 1;
+}
+
 static void complete_get_word_bounds(const char *buf, int cursor, int *start, int *end) {
   *start = cursor;
-  while (*start > 0 && buf[*start - 1] != ' ')
+  while (*start > 0) {
+    if (buf[*start - 1] == ' ' && !is_escaped_space(buf, *start - 1))
+      break;
     (*start)--;
+  }
 
   *end = cursor;
-  while (buf[*end] != '\0' && buf[*end] != ' ')
+  while (buf[*end] != '\0') {
+    if (buf[*end] == ' ' && !is_escaped_space(buf, *end))
+      break;
     (*end)++;
+  }
 }
 
 static void complete_word_at_cursor(const char *buf, int cursor, char *word, int word_size, bool *is_first) {
@@ -197,11 +229,11 @@ static void complete_generate_paths(const char *prefix) {
 
     if (strncasecmp(name, file_part, file_part_len) == 0 && g_match_count < COMPLETION_MAX_MATCHES) {
       if (dir_is_dot) {
-        strlcpy(g_matches[g_match_count], name, COMPLETION_NAME_LEN);
+        escape_path(name, g_matches[g_match_count], COMPLETION_NAME_LEN);
       } else {
         char path_buf[PATH_MAX * 2];
         snprintf(path_buf, sizeof path_buf, "%s/%s", dir_part, name);
-        strlcpy(g_matches[g_match_count], path_buf, COMPLETION_NAME_LEN);
+        escape_path(path_buf, g_matches[g_match_count], COMPLETION_NAME_LEN);
       }
       g_match_count++;
     }

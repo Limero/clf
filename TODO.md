@@ -10,6 +10,7 @@
 * With OPT_FULL_SHELL set to 0, long running commands like `:sleep 10` can't be cancelled with CTRL+C. It works with OPT_FULL_SHELL set to 1
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
 * Possible to overflow when adding to command history and if the commands are too long
+* Completion for cd should only show directories
 
 ## Features
 
