@@ -48,6 +48,8 @@ static void reload_dir_middle(void) {
   }
 
   g_items_in_middle_dir = n;
+  if (g_cursor.idx >= g_items_in_middle_dir)
+    g_cursor.idx = MAX(0, g_items_in_middle_dir - 1);
   g_update.dir_middle = false;
 }
 
@@ -175,6 +177,8 @@ static void draw_left_column(const int offset_x, const int width) {
     }
 
     g_items_in_left_dir = n;
+    if (g_left_column_idx >= g_items_in_left_dir)
+      g_left_column_idx = MAX(0, g_items_in_left_dir - 1);
     g_update.dir_left = false;
   }
 
@@ -302,6 +306,8 @@ static void draw_right_column(const int offset_x, const int width) {
     }
 
     g_items_in_right_dir = n;
+    if (g_right_column_idx >= g_items_in_right_dir)
+      g_right_column_idx = MAX(0, g_items_in_right_dir - 1);
   }
 
   if (g_items_in_right_dir == 0) {
