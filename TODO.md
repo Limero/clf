@@ -9,7 +9,6 @@
 * Renaming file to the name of different file overwrites it
 * With OPT_FULL_SHELL set to 0, long running commands like `:sleep 10` can't be cancelled with CTRL+C. It works with OPT_FULL_SHELL set to 1
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
-* Typing :a, pressing backspace once exits command mode, but it should require two backspaces. Same applies for search
 
 ## Features
 

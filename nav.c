@@ -364,6 +364,7 @@ static int nav_handle_event_command(const struct tb_event *ev) {
     return 0;
   }
 
+  const int prev_len = g_current_command.len;
   const int r = nav_handle_input_key(ev, g_current_command.chars, &g_current_command.cursor, &g_current_command.len);
 
   if (r == 1) {
@@ -387,7 +388,7 @@ static int nav_handle_event_command(const struct tb_event *ev) {
   }
 
   const bool exit_to_normal =
-      r == -1 || ((ev->key == TB_KEY_BACKSPACE || ev->key == TB_KEY_BACKSPACE2) && g_current_command.cursor == 0);
+      r == -1 || ((ev->key == TB_KEY_BACKSPACE || ev->key == TB_KEY_BACKSPACE2) && prev_len == 0);
   if (exit_to_normal) {
     if (g_search_idx_before >= 0) {
       g_cursor.idx = g_search_idx_before;
