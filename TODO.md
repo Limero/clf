@@ -36,6 +36,5 @@
 * Do more partial clearings instead of full `tb_clear()`. Maybe the draw functions for each column should trigger clear if there are changes.
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `:pwd`. Commands like `:touch` should still update. Probably have to check if files in directory were modified.
-* Make gap between columns smaller to match lf
 * See if more of the current functionality has config options in lf
 * Add comments to all config options

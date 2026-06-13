@@ -210,6 +210,9 @@ static void draw_left_column(const int offset_x, const int width) {
     const bool yanked = is_yanked_entry(left_parent, g_namelist_left[i]->d_name);
     tb_set_cell(offset_x, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
     tb_printf(offset_x + 1, y, fg, bg, " %-*.*s", width - 1 - yanked, width - 1 - yanked, g_namelist_left[i]->d_name);
+    if (i == g_left_column_idx) {
+      tb_set_cell(offset_x + width - yanked + 1, y, ' ', fg, bg);
+    }
     y++;
   }
 }
@@ -262,6 +265,9 @@ static void draw_middle_column(const int offset_x, const int width) {
     tb_set_cell(offset_x + number_width, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
     tb_printf(offset_x + number_width + 1, y, fg, bg, " %-*.*s", width - 2 - number_width - yanked,
               width - 2 - number_width - yanked, g_namelist_middle[i]->d_name);
+    if (i == g_cursor.idx) {
+      tb_set_cell(offset_x + width - yanked, y, ' ', fg, bg);
+    }
 
     y++;
   }
@@ -324,14 +330,16 @@ static void draw_right_column(const int offset_x, const int width) {
   }
 
   for (int i = start_idx; i < stop_idx; i++) {
-    uintattr_t c = color_file(g_namelist_right[i]->d_type);
+    const uintattr_t fg = color_file(g_namelist_right[i]->d_type);
+    uintattr_t sel_fg = fg;
     if (i == g_right_column_idx) {
-      c |= COLOR_UNDERLINE;
+      sel_fg |= COLOR_UNDERLINE;
     }
 
     const bool yanked = has_yanked && is_yanked_entry(right_base, g_namelist_right[i]->d_name);
-    tb_set_cell(offset_x, y, ' ', c, yanked ? yank_bg() : COLOR_DEFAULT);
-    tb_printf(offset_x + 1, y, c, COLOR_DEFAULT, " %-*.*s", width - 1 - yanked, width - 1 - yanked,
+    tb_set_cell(offset_x, y, ' ', fg, yanked ? yank_bg() : COLOR_DEFAULT);
+    tb_set_cell(offset_x + 1, y, ' ', sel_fg, COLOR_DEFAULT);
+    tb_printf(offset_x + 2, y, sel_fg, COLOR_DEFAULT, "%-*.*s", width - 1 - yanked, width - 1 - yanked,
               g_namelist_right[i]->d_name);
 
     y++;
@@ -460,9 +468,9 @@ static void draw_status_confirmation(const char *msg1, const char *msg2) {
 
 void draw_screen(const int repeat) {
   const int column_width = tb_width() / 6;
-  draw_left_column(column_width * 0, column_width * 1 - 2);
+  draw_left_column(column_width * 0, column_width * 1 - 1);
   draw_middle_column(column_width * 1 + 2, column_width * 2 - 2);
-  draw_right_column(column_width * 3, column_width * 3);
+  draw_right_column(column_width * 3 + 1, column_width * 3 - 1);
 
   draw_path();
 
