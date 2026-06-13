@@ -315,7 +315,19 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     if (!g_items_in_middle_dir) {
       return 0;
     }
-    if (nav_get_confirmation("delete ", g_cursor.name)) {
+    if (g_selected_count > 0) {
+      char msg[64];
+      snprintf(msg, sizeof msg, "%d items", g_selected_count);
+      if (nav_get_confirmation("delete ", msg)) {
+        for (int i = 0; i < g_selected_count; i++) {
+          os_exec_output(CMD_DELETE, g_selected_paths[i]);
+        }
+        g_selected_count = 0;
+        g_update.dir_middle = true;
+        g_update.dir_right = true;
+        tb_clear();
+      }
+    } else if (nav_get_confirmation("delete ", g_cursor.name)) {
       os_exec_output(CMD_DELETE, g_cursor.name);
       g_cursor.idx = g_cursor.idx ? g_cursor.idx - 1 : 0;
       g_update.dir_middle = true;
