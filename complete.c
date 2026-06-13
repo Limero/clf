@@ -1,6 +1,7 @@
 #pragma once
 
 #include "global.h"
+#include <assert.h>
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -206,20 +207,35 @@ static void complete_generate_paths(const char *prefix, const bool dirs_only) {
   const char *dir_part;
   const char *file_part;
 
-  const char *slash = strrchr(prefix, '/');
+  bool use_tilde = false;
+
+  char expanded_prefix[PATH_MAX];
+  const char *scan_prefix = prefix;
+
+  if (prefix[0] == '~' && (prefix[1] == '/' || prefix[1] == '\0')) {
+    assert(g_homepath && g_homepath[0]);
+    if (prefix[1] == '/')
+      snprintf(expanded_prefix, sizeof expanded_prefix, "%s%s", g_homepath, prefix + 1);
+    else
+      snprintf(expanded_prefix, sizeof expanded_prefix, "%s/", g_homepath);
+    scan_prefix = expanded_prefix;
+    use_tilde = true;
+  }
+
+  const char *slash = strrchr(scan_prefix, '/');
   if (slash) {
     file_part = slash + 1;
-    size_t dir_len = slash - prefix;
+    size_t dir_len = slash - scan_prefix;
     if (dir_len == 0) {
       dir_buf[0] = '/';
       dir_buf[1] = '\0';
     } else {
-      memcpy(dir_buf, prefix, dir_len);
+      memcpy(dir_buf, scan_prefix, dir_len);
       dir_buf[dir_len] = '\0';
     }
     dir_part = dir_buf;
   } else {
-    file_part = prefix;
+    file_part = scan_prefix;
     dir_part = ".";
   }
 
@@ -245,7 +261,15 @@ static void complete_generate_paths(const char *prefix, const bool dirs_only) {
     }
 
     if (strncasecmp(name, file_part, file_part_len) == 0 && g_match_count < COMPLETION_MAX_MATCHES) {
-      if (dir_is_dot) {
+      if (use_tilde) {
+        const char *rest = dir_part + g_homepath_len;
+        char path_buf[PATH_MAX * 2];
+        if (rest[0] == '\0')
+          snprintf(path_buf, sizeof path_buf, "~/%s", name);
+        else
+          snprintf(path_buf, sizeof path_buf, "~%s/%s", rest, name);
+        escape_path(path_buf, g_matches[g_match_count], COMPLETION_NAME_LEN);
+      } else if (dir_is_dot) {
         escape_path(name, g_matches[g_match_count], COMPLETION_NAME_LEN);
       } else {
         char path_buf[PATH_MAX * 2];

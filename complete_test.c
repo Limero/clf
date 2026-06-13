@@ -310,6 +310,74 @@ static void test_path_matching_dirs_only(void) {
   test_cleanup_files(c);
 }
 
+static void test_path_matching_tilde(void) {
+  const char *c = __func__;
+  char *home_dir = test_create_dir(c, "home");
+  test_create_file(c, "home/file1.txt");
+  test_create_file(c, "home/file2.txt");
+  test_create_file(c, "home/other.txt");
+
+  char dpath[500];
+  snprintf(dpath, sizeof dpath, "%s/subdir", home_dir);
+  mkdir(dpath, 0700);
+
+  char *orig_homepath = g_homepath;
+  int orig_homepath_len = g_homepath_len;
+  g_homepath = home_dir;
+  g_homepath_len = strlen(g_homepath);
+
+  char prev[PATH_MAX];
+  assert(getcwd(prev, sizeof prev));
+  assert_int(chdir("/tmp"), ==, 0);
+
+  g_match_count = 0;
+  complete_generate_paths("~", false);
+  assert_int(g_match_count, >=, 3);
+  bool found_tilde_file1 = false;
+  for (int i = 0; i < g_match_count; i++) {
+    if (strcmp(g_matches[i], "~/file1.txt") == 0)
+      found_tilde_file1 = true;
+  }
+  assert(found_tilde_file1);
+
+  g_match_count = 0;
+  complete_generate_paths("~/file", false);
+  assert_int(g_match_count, >=, 2);
+  bool f1 = false, f2 = false;
+  for (int i = 0; i < g_match_count; i++) {
+    if (strcmp(g_matches[i], "~/file1.txt") == 0)
+      f1 = true;
+    if (strcmp(g_matches[i], "~/file2.txt") == 0)
+      f2 = true;
+  }
+  assert(f1);
+  assert(f2);
+
+  g_match_count = 0;
+  complete_generate_paths("~/subdir", true);
+  assert_int(g_match_count, >=, 1);
+  assert_string_equal(g_matches[0], "~/subdir");
+
+  g_match_count = 0;
+  complete_generate_paths("~/nonexistent", false);
+  assert_int(g_match_count, ==, 0);
+
+  g_match_count = 0;
+  complete_generate_paths("~", true);
+  assert_int(g_match_count, >=, 1);
+  bool found_subdir = false;
+  for (int i = 0; i < g_match_count; i++) {
+    if (strcmp(g_matches[i], "~/subdir") == 0)
+      found_subdir = true;
+  }
+  assert(found_subdir);
+
+  g_homepath = orig_homepath;
+  g_homepath_len = orig_homepath_len;
+  assert_int(chdir(prev), ==, 0);
+  test_cleanup_files(c);
+}
+
 static void test_complete_resets_on_type(void) {
   g_cache_cmd_count = 0;
   strcpy(g_cache_cmds[g_cache_cmd_count++], "cat");
@@ -348,6 +416,7 @@ Test complete_tests[] = {
     {"/complete_resets_on_type", test_complete_resets_on_type},
     {"/path_matching_with_spaces", test_path_matching_with_spaces},
     {"/path_matching_dirs_only", test_path_matching_dirs_only},
+    {"/path_matching_tilde", test_path_matching_tilde},
     {"/complete_cycle_with_spaces", test_complete_cycle_with_spaces},
 
     {NULL, NULL},
