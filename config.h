@@ -29,3 +29,7 @@ const unsigned int OPT_CMD_COMPLETE = 1;
 // Enable multi-selection with space
 // Will allocate an extra ~256KB static memory
 const unsigned int OPT_MULTISELECT = 1;
+
+// Enable command history (up/down arrows to recall previous commands)
+// Will allocate an extra ~25KB static memory
+const unsigned int OPT_CMD_HISTORY = 1;

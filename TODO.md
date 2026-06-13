@@ -24,7 +24,6 @@
 * Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
-* Add OPT_CMD_HISTORY to disable command history completely
 
 ## General improvements
 

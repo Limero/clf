@@ -35,7 +35,7 @@ void command_mode_enter(void) {
 }
 
 void command_history_prev(void) {
-  if (command_history.cursor == 0) {
+  if (!OPT_CMD_HISTORY || command_history.cursor == 0) {
     return;
   }
   command_history.cursor--;
@@ -46,7 +46,7 @@ void command_history_prev(void) {
 }
 
 void command_history_next(void) {
-  if (command_history.cursor >= command_history.count) {
+  if (!OPT_CMD_HISTORY || command_history.cursor >= command_history.count) {
     return;
   }
   command_history.cursor++;
@@ -57,6 +57,8 @@ void command_history_next(void) {
 }
 
 void command_history_add(void) {
+  if (!OPT_CMD_HISTORY)
+    return;
   strlcpy(command_history.history[command_history.count], g_current_command.chars,
           sizeof(command_history.history[command_history.count]));
   command_history.count++;
