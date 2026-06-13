@@ -34,3 +34,4 @@
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `:pwd`. Commands like `:touch` should still update. Probably have to check if files in directory were modified.
 * See if more of the current functionality has config options in lf
 * Add comments to all config options
+* When multi-selection is disabled, program still creates memory for the full clipboard
