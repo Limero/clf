@@ -1,8 +1,7 @@
 #pragma once
 
 #include "color.c"
-#include "command.c"
-#include "global.h"
+#include "complete.c"
 #include "preview.c"
 #include "status.c"
 #include <assert.h>
@@ -419,6 +418,13 @@ static void draw_status_command(void) {
   clear_line(y);
   tb_print(0, y, COLOR_DEFAULT, COLOR_DEFAULT, g_search_idx_before >= 0 ? "/" : ":");
   tb_print(1, y, COLOR_DEFAULT, COLOR_DEFAULT, g_current_command.chars);
+
+  if (OPT_CMD_COMPLETE && g_search_idx_before < 0 && complete_is_active()) {
+    char info[64];
+    snprintf(info, sizeof info, " [%d/%d]", complete_match_idx() + 1, complete_match_count());
+    tb_print(1 + g_current_command.len, y, COLOR_STATUS_PERM, COLOR_DEFAULT, info);
+  }
+
   tb_set_cursor(g_current_command.cursor + 1,
                 y); // offset by one because we prefix with :
 }

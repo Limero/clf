@@ -61,3 +61,9 @@ static struct dirent **g_namelist_left = NULL;
 static struct dirent **g_namelist_middle = NULL;
 static struct dirent **g_namelist_right = NULL;
 static pthread_mutex_t g_tb_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static struct {
+  char chars[4096];
+  int len; // without NUL-termination
+  int cursor;
+} g_current_command;

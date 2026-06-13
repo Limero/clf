@@ -1,14 +1,8 @@
 #pragma once
 
-#include <stdbool.h>
+#include "global.h"
 #include <stdint.h>
 #include <string.h>
-
-struct {
-  char chars[4096];
-  int len; // without NUL-termination
-  int cursor;
-} g_current_command;
 
 static struct {
   char history[100][256];

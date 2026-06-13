@@ -1,5 +1,6 @@
 #include <dirent.h>
 
+#include "complete_test.c"
 #include "copy_test.c"
 #include "os_test.c"
 
@@ -41,10 +42,7 @@ Test main_tests[] = {
 };
 
 Suite test_suites[] = {
-    {"main", main_tests},
-    {"copy", copy_tests},
-    {"os", os_tests},
-    {NULL, NULL},
+    {"main", main_tests}, {"complete", complete_tests}, {"copy", copy_tests}, {"os", os_tests}, {NULL, NULL},
 };
 
 void test_all_testfiles_included(void) {

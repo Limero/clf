@@ -22,13 +22,13 @@
 * Move cursor to pasted file/dir after copy/move
 * Select files and copy/cut multiple
 * Show progress for copy/move
-* Tab completion for commands
 * Handle collision with existing files when pasting after copy/move
 * Bind commands to keys in config.h (can be used for bookmarks with cd)
 * Ability to write to log file what is happening while running for debugging
 * Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
+* Make command tab completion work with ~
 
 ## General improvements
 

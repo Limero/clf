@@ -1,5 +1,6 @@
 #pragma once
 
+#include "command.c"
 #include "copy.c"
 #include "draw.c"
 #include "global.h"
@@ -356,14 +357,30 @@ static int nav_handle_event_command(const struct tb_event *ev) {
   switch (ev->key) {
   case TB_KEY_ARROW_UP:
   case TB_KEY_CTRL_P:
+    if (OPT_CMD_COMPLETE)
+      complete_reset();
     command_history_prev();
     return 0;
   case TB_KEY_ARROW_DOWN:
   case TB_KEY_CTRL_N:
+    if (OPT_CMD_COMPLETE)
+      complete_reset();
     command_history_next();
+    return 0;
+  case TB_KEY_TAB:
+    if (OPT_CMD_COMPLETE && g_search_idx_before < 0) {
+      complete_handle_tab();
+    }
+    return 0;
+  case TB_KEY_BACK_TAB:
+    if (OPT_CMD_COMPLETE && g_search_idx_before < 0) {
+      complete_handle_shift_tab();
+    }
     return 0;
   }
 
+  if (OPT_CMD_COMPLETE)
+    complete_reset();
   const int prev_len = g_current_command.len;
   const int r = nav_handle_input_key(ev, g_current_command.chars, &g_current_command.cursor, &g_current_command.len);
 

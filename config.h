@@ -16,6 +16,9 @@ const unsigned int OPT_IGNORE_CASE = 1;
 // Allows the use of aliases, but has a small performance impact
 const unsigned int OPT_FULL_SHELL = 1;
 
+// Enable tab completion for commands in command mode (PATH executables + shell aliases)
+const unsigned int OPT_CMD_COMPLETE = 1;
+
 // Delay in ms before showing the ">" indicator when running a command
 // Prevents flickering for fast commands like :pwd
 const unsigned int CMD_INDICATOR_DELAY_MS = 80;

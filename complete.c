@@ -1,0 +1,288 @@
+#pragma once
+
+#include "global.h"
+#include <dirent.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <strings.h>
+#include <unistd.h>
+
+#define COMPLETION_MAX 4096
+#define COMPLETION_NAME_LEN 1024
+
+static char g_cache_cmds[COMPLETION_MAX][COMPLETION_NAME_LEN];
+static int g_cache_cmd_count = 0;
+static bool g_cache_ready = false;
+
+static char g_matches[COMPLETION_MAX][COMPLETION_NAME_LEN];
+static int g_match_count = 0;
+static int g_match_idx = 0;
+static char g_last_prefix[COMPLETION_NAME_LEN] = "";
+static bool g_completing = false;
+
+int complete_match_count(void) {
+  return g_match_count;
+}
+
+int complete_match_idx(void) {
+  return g_match_idx;
+}
+
+bool complete_is_active(void) {
+  return g_completing;
+}
+
+static int complete_cmp(const void *a, const void *b) {
+  return strcmp((const char *)a, (const char *)b);
+}
+
+static const char *complete_shell_name(void) {
+  const char *shell = getenv("SHELL");
+  if (!shell)
+    return "sh";
+  const char *name = strrchr(shell, '/');
+  return name ? name + 1 : shell;
+}
+
+void complete_cache(void) {
+  if (g_cache_ready)
+    return;
+  g_cache_cmd_count = 0;
+
+  const char *path_env = getenv("PATH");
+  if (path_env) {
+    char path_copy[4096];
+    strlcpy(path_copy, path_env, sizeof path_copy);
+    char *dir = strtok(path_copy, ":");
+    while (dir && g_cache_cmd_count < COMPLETION_MAX) {
+      struct dirent **entries = NULL;
+      int n = scandir(dir, &entries, NULL, alphasort);
+      if (n > 0) {
+        for (int i = 0; i < n; i++) {
+          if (entries[i]->d_name[0] == '.') {
+            free(entries[i]);
+            continue;
+          }
+          char full[4096];
+          int sn = snprintf(full, sizeof full, "%s/%s", dir, entries[i]->d_name);
+          if (sn >= 0 && (size_t)sn < sizeof full && access(full, X_OK) == 0) {
+            if (g_cache_cmd_count < COMPLETION_MAX) {
+              strlcpy(g_cache_cmds[g_cache_cmd_count], entries[i]->d_name, COMPLETION_NAME_LEN);
+              g_cache_cmd_count++;
+            }
+          }
+          free(entries[i]);
+        }
+        free(entries);
+      }
+      dir = strtok(NULL, ":");
+    }
+  }
+
+  if (OPT_FULL_SHELL) {
+    const char *shell_name = complete_shell_name();
+    const char *alias_cmd = NULL;
+    if (strcmp(shell_name, "bash") == 0) {
+      alias_cmd = "bash -i -c 'compgen -a' 2>/dev/null";
+    } else if (strcmp(shell_name, "zsh") == 0) {
+      alias_cmd = "zsh -i -c 'print -l ${(k)aliases}' 2>/dev/null";
+    }
+    if (alias_cmd) {
+      FILE *fp = popen(alias_cmd, "r");
+      if (fp) {
+        char line[512];
+        while (fgets(line, sizeof line, fp) && g_cache_cmd_count < COMPLETION_MAX) {
+          size_t len = strlen(line);
+          if (len > 0 && line[len - 1] == '\n')
+            line[--len] = '\0';
+          if (len == 0)
+            continue;
+          strlcpy(g_cache_cmds[g_cache_cmd_count], line, COMPLETION_NAME_LEN);
+          g_cache_cmd_count++;
+        }
+        pclose(fp);
+      }
+    }
+  }
+
+  if (g_cache_cmd_count > 1) {
+    qsort(g_cache_cmds, g_cache_cmd_count, COMPLETION_NAME_LEN, complete_cmp);
+    int j = 0;
+    for (int i = 0; i < g_cache_cmd_count; i++) {
+      if (j == 0 || strcmp(g_cache_cmds[j - 1], g_cache_cmds[i]) != 0) {
+        if (i != j)
+          strcpy(g_cache_cmds[j], g_cache_cmds[i]);
+        j++;
+      }
+    }
+    g_cache_cmd_count = j;
+  }
+
+  g_cache_ready = true;
+}
+
+static void complete_get_word_bounds(const char *buf, int cursor, int *start, int *end) {
+  *start = cursor;
+  while (*start > 0 && buf[*start - 1] != ' ')
+    (*start)--;
+
+  *end = cursor;
+  while (buf[*end] != '\0' && buf[*end] != ' ')
+    (*end)++;
+}
+
+static void complete_word_at_cursor(const char *buf, int cursor, char *word, int word_size, bool *is_first) {
+  int start, end;
+  complete_get_word_bounds(buf, cursor, &start, &end);
+
+  int len = end - start;
+  if (len >= word_size)
+    len = word_size - 1;
+  if (len > 0)
+    memcpy(word, buf + start, len);
+  word[len] = '\0';
+
+  *is_first = (start == 0);
+}
+
+static void complete_generate_commands(const char *prefix) {
+  const int prefix_len = strlen(prefix);
+  for (int i = 0; i < g_cache_cmd_count && g_match_count < COMPLETION_MAX; i++) {
+    if (strncasecmp(g_cache_cmds[i], prefix, prefix_len) == 0) {
+      strlcpy(g_matches[g_match_count], g_cache_cmds[i], COMPLETION_NAME_LEN);
+      g_match_count++;
+    }
+  }
+}
+
+static void complete_generate_paths(const char *prefix) {
+  char dir_buf[PATH_MAX];
+  const char *dir_part;
+  const char *file_part;
+
+  const char *slash = strrchr(prefix, '/');
+  if (slash) {
+    file_part = slash + 1;
+    size_t dir_len = slash - prefix;
+    if (dir_len == 0) {
+      dir_buf[0] = '/';
+      dir_buf[1] = '\0';
+    } else {
+      memcpy(dir_buf, prefix, dir_len);
+      dir_buf[dir_len] = '\0';
+    }
+    dir_part = dir_buf;
+  } else {
+    file_part = prefix;
+    dir_part = ".";
+  }
+
+  struct dirent **entries = NULL;
+  int n = scandir(dir_part, &entries, NULL, NULL);
+  if (n < 0)
+    return;
+
+  const int file_part_len = strlen(file_part);
+  const bool dir_is_dot = (dir_part[0] == '.' && dir_part[1] == '\0');
+
+  for (int i = 0; i < n; i++) {
+    const char *name = entries[i]->d_name;
+
+    if (name[0] == '.' && file_part[0] != '.') {
+      free(entries[i]);
+      continue;
+    }
+
+    if (strncasecmp(name, file_part, file_part_len) == 0 && g_match_count < COMPLETION_MAX) {
+      if (dir_is_dot) {
+        strlcpy(g_matches[g_match_count], name, COMPLETION_NAME_LEN);
+      } else {
+        char path_buf[PATH_MAX * 2];
+        snprintf(path_buf, sizeof path_buf, "%s/%s", dir_part, name);
+        strlcpy(g_matches[g_match_count], path_buf, COMPLETION_NAME_LEN);
+      }
+      g_match_count++;
+    }
+    free(entries[i]);
+  }
+  free(entries);
+}
+
+static void complete_generate(const char *word, bool is_first) {
+  g_match_count = 0;
+
+  if (is_first) {
+    complete_generate_commands(word);
+  } else {
+    complete_generate_paths(word);
+  }
+
+  if (g_match_count > 1) {
+    qsort(g_matches, g_match_count, COMPLETION_NAME_LEN, complete_cmp);
+  }
+
+  g_match_idx = g_match_count > 0 ? 0 : -1;
+  g_completing = g_match_count > 0;
+}
+
+static void complete_apply(const char *completion) {
+  int start, end;
+  complete_get_word_bounds(g_current_command.chars, g_current_command.cursor, &start, &end);
+
+  const int new_len = strlen(completion);
+  const int tail_len = strlen(g_current_command.chars) - end;
+
+  const int new_total = start + new_len + tail_len;
+  if (new_total >= (int)sizeof(g_current_command.chars))
+    return;
+
+  memmove(g_current_command.chars + start + new_len, g_current_command.chars + end, tail_len + 1);
+
+  memcpy(g_current_command.chars + start, completion, new_len);
+
+  g_current_command.len = new_total;
+  g_current_command.cursor = start + new_len;
+}
+
+void complete_reset(void) {
+  g_match_count = 0;
+  g_match_idx = -1;
+  g_last_prefix[0] = '\0';
+  g_completing = false;
+}
+
+bool complete_handle_tab(void) {
+  complete_cache();
+
+  char word[COMPLETION_NAME_LEN];
+  bool is_first;
+  complete_word_at_cursor(g_current_command.chars, g_current_command.cursor, word, sizeof word, &is_first);
+
+  if (g_completing && strcmp(word, g_last_prefix) == 0) {
+    g_match_idx = (g_match_idx + 1) % g_match_count;
+    complete_apply(g_matches[g_match_idx]);
+    strlcpy(g_last_prefix, g_matches[g_match_idx], sizeof g_last_prefix);
+    return true;
+  }
+
+  complete_generate(word, is_first);
+
+  if (g_match_count == 0)
+    return false;
+
+  complete_apply(g_matches[0]);
+  strlcpy(g_last_prefix, g_matches[0], sizeof g_last_prefix);
+  g_match_idx = 0;
+  return true;
+}
+
+bool complete_handle_shift_tab(void) {
+  if (!g_completing || g_match_count == 0)
+    return false;
+
+  g_match_idx = (g_match_idx - 1 + g_match_count) % g_match_count;
+  complete_apply(g_matches[g_match_idx]);
+  strlcpy(g_last_prefix, g_matches[g_match_idx], sizeof g_last_prefix);
+  return true;
+}
