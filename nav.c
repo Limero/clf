@@ -255,10 +255,33 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     nav_bottom();
     return 0;
   case ' ':
-    if (!g_items_in_middle_dir) {
+    if (!OPT_MULTISELECT || !g_items_in_middle_dir) {
       return 0;
     }
-    // TODO: select
+    char path[PATH_MAX];
+    const int needed = snprintf(path, sizeof path, "%s/%s", g_cwd, g_namelist_middle[g_cursor.idx]->d_name);
+    if (needed < 0 || needed >= (int)sizeof path) {
+      snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
+      g_msg_type = MSG_TYPE_ERROR;
+      return 0;
+    }
+    const int found = selected_index(path);
+    if (found >= 0) {
+      g_selected_count--;
+      if (found < g_selected_count) {
+        strlcpy(g_selected_paths[found], g_selected_paths[g_selected_count], sizeof g_selected_paths[0]);
+      }
+    } else if (g_selected_count >= MAX_SELECTED) {
+      snprintf(g_msg, sizeof g_msg, "max %d selected files", MAX_SELECTED);
+      g_msg_type = MSG_TYPE_ERROR;
+      return 0;
+    } else {
+      strlcpy(g_selected_paths[g_selected_count++], path, sizeof g_selected_paths[0]);
+    }
+    g_cursor.name[0] = '\0';
+    g_update.dir_middle = true;
+    tb_clear();
+    nav_down(1);
     return 0;
   case 'y':
   case 'd': {

@@ -12,6 +12,12 @@ const unsigned int OPT_NUMBER = 1;
 const unsigned int OPT_RELATIVE_NUMBER = 1;
 const unsigned int OPT_IGNORE_CASE = 1;
 
+// Delay in ms before showing the ">" indicator when running a command
+// Prevents flickering for fast commands like :pwd
+const unsigned int OPT_CMD_INDICATOR_DELAY_MS = 80;
+
+// -- The options below have a performance impact, disable for a minimal build --
+
 // Run commands in $SHELL with rc files sourced instead of /bin/sh
 // Allows the use of aliases, but has a small performance impact
 const unsigned int OPT_FULL_SHELL = 1;
@@ -20,6 +26,7 @@ const unsigned int OPT_FULL_SHELL = 1;
 // Will allocate an extra ~4MB static memory
 const unsigned int OPT_CMD_COMPLETE = 1;
 
-// Delay in ms before showing the ">" indicator when running a command
-// Prevents flickering for fast commands like :pwd
-const unsigned int OPT_CMD_INDICATOR_DELAY_MS = 80;
+// Enable multi-selection with space
+// Will allocate an extra ~256KB static memory
+// TODO: Enable by default once multi copy/move is implemented
+const unsigned int OPT_MULTISELECT = 0;

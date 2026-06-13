@@ -10,6 +10,7 @@ color_t COLOR_DEFAULT = TB_DEFAULT;
 color_t COLOR_REVERSE = TB_REVERSE; // using this in either fg/bg will switch bg and fg
 color_t COLOR_UNDERLINE = TB_UNDERLINE;
 color_t COLOR_LINENUMBER = TB_YELLOW;
+color_t COLOR_SELECT = TB_MAGENTA;
 color_t COLOR_YANK_COPY = TB_YELLOW;
 color_t COLOR_YANK_MOVE = TB_RED;
 color_t COLOR_PATH_USER_HOST = TB_GREEN | TB_BOLD;

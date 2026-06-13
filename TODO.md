@@ -18,7 +18,7 @@
 * Remember cursor position in right column for all directories (it's currently reset when moving up/down)
 * Move cursor to new file/dir after commands, touch/mkdir/etc
 * Move cursor to pasted file/dir after copy/move
-* Select files and copy/cut multiple
+* Copy/cut multiple selected files
 * Show progress for copy/move
 * Handle collision with existing files when pasting after copy/move
 * Bind commands to keys in config.h (can be used for bookmarks with cd)

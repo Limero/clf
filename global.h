@@ -44,6 +44,10 @@ static modes_t g_current_mode = MODE_NORMAL;
 static char g_yanked_path[PATH_MAX];
 static bool g_yanked_is_move = false;
 
+#define MAX_SELECTED 64
+static int g_selected_count = 0;
+static char g_selected_paths[MAX_SELECTED][PATH_MAX]; // ~256KB
+
 static char g_cwd[PATH_MAX] = ".";
 
 static int g_items_in_left_dir = 0;
