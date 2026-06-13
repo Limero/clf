@@ -14,6 +14,7 @@ static void test_copy_file(void) {
   test_assert_file_exists(c, "file");
   test_assert_file_exists(c, "dir/file");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -30,6 +31,7 @@ static void test_copy_directory(void) {
   test_assert_file_exists(c, "source/file");
   test_assert_file_exists(c, "target/source/file");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -45,6 +47,7 @@ static void test_move_file(void) {
   test_assert_file_not_exists(c, "file");
   test_assert_file_exists(c, "target/file");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -62,6 +65,7 @@ static void test_move_directory(void) {
   test_assert_dir_not_exists(c, "source");
   test_assert_file_exists(c, "target/source/file");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -78,6 +82,7 @@ static void test_copy_file_free_file_name_before_pasting(void) {
   test_assert_file_exists(c, "file");
   test_assert_file_exists(c, "dir/file");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -97,6 +102,7 @@ static void test_copy_file_copy_twice(void) {
   test_assert_file_not_exists(c, "dir/file1");
   test_assert_file_exists(c, "dir/file2");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -115,6 +121,7 @@ static void test_copy_file_paste_twice(void) {
   test_assert_file_exists(c, "dir1/file");
   test_assert_file_exists(c, "dir2/file");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -133,6 +140,7 @@ static void test_copy_multiple_files(void) {
   test_assert_file_exists(c, "dir/file1");
   test_assert_file_exists(c, "dir/file2");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
@@ -151,6 +159,7 @@ static void test_move_multiple_files(void) {
   test_assert_file_exists(c, "target/file1");
   test_assert_file_exists(c, "target/file2");
 
+  unlink(CLIPBOARD_FILE);
   test_cleanup_files(c);
 }
 
