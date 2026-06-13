@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
 #define COMPLETION_MAX 4096
@@ -189,7 +190,18 @@ static void complete_generate_commands(const char *prefix) {
   }
 }
 
-static void complete_generate_paths(const char *prefix) {
+static bool entry_is_dir(const struct dirent *entry, const char *dir_part) {
+  if (entry->d_type == DT_DIR)
+    return true;
+  if (entry->d_type != DT_LNK && entry->d_type != DT_UNKNOWN)
+    return false;
+  char full_path[PATH_MAX * 2];
+  snprintf(full_path, sizeof full_path, "%s/%s", dir_part, entry->d_name);
+  struct stat st;
+  return stat(full_path, &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+static void complete_generate_paths(const char *prefix, const bool dirs_only) {
   char dir_buf[PATH_MAX];
   const char *dir_part;
   const char *file_part;
@@ -227,6 +239,11 @@ static void complete_generate_paths(const char *prefix) {
       continue;
     }
 
+    if (dirs_only && !entry_is_dir(entries[i], dir_part)) {
+      free(entries[i]);
+      continue;
+    }
+
     if (strncasecmp(name, file_part, file_part_len) == 0 && g_match_count < COMPLETION_MAX_MATCHES) {
       if (dir_is_dot) {
         escape_path(name, g_matches[g_match_count], COMPLETION_NAME_LEN);
@@ -248,7 +265,10 @@ static void complete_generate(const char *word, bool is_first) {
   if (is_first) {
     complete_generate_commands(word);
   } else {
-    complete_generate_paths(word);
+    bool dirs_only = strncmp(g_current_command.chars, "cd ", 3) == 0 ||
+                     strncmp(g_current_command.chars, "pushd ", 6) == 0 ||
+                     strncmp(g_current_command.chars, "rmdir ", 6) == 0;
+    complete_generate_paths(word, dirs_only);
   }
 
   if (g_match_count > 1) {

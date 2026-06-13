@@ -90,7 +90,7 @@ static void test_path_matching(void) {
 
   // Match from current directory
   g_match_count = 0;
-  complete_generate_paths("file");
+  complete_generate_paths("file", false);
   assert_int(g_match_count, >=, 2);
   bool f1 = false, f2 = false;
   for (int i = 0; i < g_match_count; i++) {
@@ -104,17 +104,17 @@ static void test_path_matching(void) {
 
   // Empty prefix lists all
   g_match_count = 0;
-  complete_generate_paths("");
+  complete_generate_paths("", false);
   assert_int(g_match_count, >=, 3);
 
   // No match
   g_match_count = 0;
-  complete_generate_paths("zzz");
+  complete_generate_paths("zzz", false);
   assert_int(g_match_count, ==, 0);
 
   // Dot prefix shows . and ..
   g_match_count = 0;
-  complete_generate_paths(".");
+  complete_generate_paths(".", false);
   assert_int(g_match_count, >=, 2);
 
   assert_int(chdir(prev), ==, 0);
@@ -202,9 +202,13 @@ static void test_complete_cycle_with_spaces(void) {
   g_cache_ready = true;
 
   const char *dir = test_create_dir(c, "");
-  test_create_file(c, "a.txt");
-  test_create_file(c, "b file.txt");
-  test_create_file(c, "c.txt");
+  char dpath[500];
+  snprintf(dpath, sizeof dpath, "%s/a_dir", dir);
+  mkdir(dpath, 0700);
+  snprintf(dpath, sizeof dpath, "%s/b dir", dir);
+  mkdir(dpath, 0700);
+  snprintf(dpath, sizeof dpath, "%s/c_dir", dir);
+  mkdir(dpath, 0700);
 
   char prev[PATH_MAX];
   assert(getcwd(prev, sizeof prev));
@@ -215,21 +219,21 @@ static void test_complete_cycle_with_spaces(void) {
   g_current_command.len = 3;
   g_current_command.cursor = 3;
 
-  // First tab finds all matches, applies first (a.txt)
+  // First tab finds all matches, applies first (a_dir)
   assert(complete_handle_tab());
-  assert_string_equal(g_current_command.chars, "cd a.txt");
+  assert_string_equal(g_current_command.chars, "cd a_dir");
 
-  // Second tab cycles to b file.txt (escaped)
+  // Second tab cycles to b dir (escaped)
   assert(complete_handle_tab());
-  assert_string_equal(g_current_command.chars, "cd b\\ file.txt");
+  assert_string_equal(g_current_command.chars, "cd b\\ dir");
 
-  // Third tab cycles to c.txt
+  // Third tab cycles to c_dir
   assert(complete_handle_tab());
-  assert_string_equal(g_current_command.chars, "cd c.txt");
+  assert_string_equal(g_current_command.chars, "cd c_dir");
 
-  // Fourth tab wraps back to a.txt
+  // Fourth tab wraps back to a_dir
   assert(complete_handle_tab());
-  assert_string_equal(g_current_command.chars, "cd a.txt");
+  assert_string_equal(g_current_command.chars, "cd a_dir");
 
   g_cache_ready = false;
   assert_int(chdir(prev), ==, 0);
@@ -248,7 +252,7 @@ static void test_path_matching_with_spaces(void) {
   assert_int(chdir(dir), ==, 0);
 
   g_match_count = 0;
-  complete_generate_paths("");
+  complete_generate_paths("", false);
   bool found_escaped_space = false;
   bool found_escaped_backslash = false;
   bool found_plain = false;
@@ -263,6 +267,44 @@ static void test_path_matching_with_spaces(void) {
   assert(found_escaped_space);
   assert(found_escaped_backslash);
   assert(found_plain);
+
+  assert_int(chdir(prev), ==, 0);
+  test_cleanup_files(c);
+}
+
+static void test_path_matching_dirs_only(void) {
+  const char *c = __func__;
+  char *dir = test_create_dir(c, "");
+  test_create_file(c, "file1.txt");
+  test_create_file(c, "file2.txt");
+  char dpath[500];
+  snprintf(dpath, sizeof dpath, "%s/sub1", dir);
+  mkdir(dpath, 0700);
+  snprintf(dpath, sizeof dpath, "%s/sub2", dir);
+  mkdir(dpath, 0700);
+
+  char prev[PATH_MAX];
+  assert(getcwd(prev, sizeof prev));
+  assert_int(chdir(dir), ==, 0);
+
+  // With dirs_only=true, only directories should appear
+  g_match_count = 0;
+  complete_generate_paths("", true);
+  assert_int(g_match_count, ==, 2);
+  bool found_sub1 = false, found_sub2 = false;
+  for (int i = 0; i < g_match_count; i++) {
+    if (strcmp(g_matches[i], "sub1") == 0)
+      found_sub1 = true;
+    if (strcmp(g_matches[i], "sub2") == 0)
+      found_sub2 = true;
+  }
+  assert(found_sub1);
+  assert(found_sub2);
+
+  // With dirs_only=false, both files and dirs appear
+  g_match_count = 0;
+  complete_generate_paths("", false);
+  assert_int(g_match_count, >=, 4);
 
   assert_int(chdir(prev), ==, 0);
   test_cleanup_files(c);
@@ -305,6 +347,7 @@ Test complete_tests[] = {
     {"/complete_apply_shorter", test_complete_apply_shorter},
     {"/complete_resets_on_type", test_complete_resets_on_type},
     {"/path_matching_with_spaces", test_path_matching_with_spaces},
+    {"/path_matching_dirs_only", test_path_matching_dirs_only},
     {"/complete_cycle_with_spaces", test_complete_cycle_with_spaces},
 
     {NULL, NULL},
