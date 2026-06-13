@@ -16,7 +16,6 @@
 * Remember cursor position in right column when moving back multiple directories
 * Remember cursor position in right column for all directories (it's currently reset when moving up/down)
 * Move cursor to new file/dir after commands, touch/mkdir/etc
-* Move cursor to pasted file/dir after copy/move
 * Show progress for copy/move
 * Handle collision with existing files when pasting after copy/move
 * Bind commands to keys in config.h (can be used for bookmarks with cd)
@@ -24,6 +23,7 @@
 * Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
+* Show file name in success message after moving/copying just one file
 
 ## General improvements
 
@@ -33,3 +33,4 @@
 * See if more of the current functionality has config options in lf
 * Add comments to all config options
 * When multi-selection is disabled, program still creates memory for the full clipboard
+* Performance config flags might have to converted to `#define` to actually be useful

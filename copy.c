@@ -164,6 +164,9 @@ bool copy_paste(const char *target_dir_path) {
     const char *op = is_move ? "Moved" : "Copied";
     snprintf(g_msg, sizeof g_msg, "%s %d/%d", op, success_count, path_count);
     g_msg_type = MSG_TYPE_SUCCESS;
+
+    const char *base = strrchr(g_clipboard_paths[0], '/');
+    strlcpy(g_cursor.name, base ? base + 1 : g_clipboard_paths[0], sizeof g_cursor.name);
     return true;
   }
   return false;
