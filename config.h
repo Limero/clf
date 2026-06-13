@@ -28,5 +28,4 @@ const unsigned int OPT_CMD_COMPLETE = 1;
 
 // Enable multi-selection with space
 // Will allocate an extra ~256KB static memory
-// TODO: Enable by default once multi copy/move is implemented
-const unsigned int OPT_MULTISELECT = 0;
+const unsigned int OPT_MULTISELECT = 1;

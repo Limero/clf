@@ -8,7 +8,7 @@ static void test_copy_file(void) {
   char *f = test_create_file(c, "file");
   char *d = test_create_dir(c, "dir");
 
-  copy_yank(f, false);
+  copy_yank((const char *[]){f}, 1, false);
   copy_paste(d);
 
   test_assert_file_exists(c, "file");
@@ -24,7 +24,7 @@ static void test_copy_directory(void) {
   test_create_file(c, "source/file");
   char *target = test_create_dir(c, "target");
 
-  copy_yank(src, false);
+  copy_yank((const char *[]){src}, 1, false);
   copy_paste(target);
 
   test_assert_file_exists(c, "source/file");
@@ -39,7 +39,7 @@ static void test_move_file(void) {
   char *f = test_create_file(c, "file");
   char *target = test_create_dir(c, "target");
 
-  copy_yank(f, true);
+  copy_yank((const char *[]){f}, 1, true);
   copy_paste(target);
 
   test_assert_file_not_exists(c, "file");
@@ -55,7 +55,7 @@ static void test_move_directory(void) {
   test_create_file(c, "source/file");
   char *target = test_create_dir(c, "target");
 
-  copy_yank(src, true);
+  copy_yank((const char *[]){src}, 1, true);
   copy_paste(target);
 
   test_assert_file_not_exists(c, "source/file");
@@ -71,7 +71,7 @@ static void test_copy_file_free_file_name_before_pasting(void) {
   char *f = test_create_file(c, "file");
   char *d = test_create_dir(c, "dir");
 
-  copy_yank(f, false);
+  copy_yank((const char *[]){f}, 1, false);
   free(f);
   copy_paste(d);
 
@@ -88,8 +88,8 @@ static void test_copy_file_copy_twice(void) {
   char *f2 = test_create_file(c, "file2");
   char *d = test_create_dir(c, "dir");
 
-  copy_yank(f1, false);
-  copy_yank(f2, false);
+  copy_yank((const char *[]){f1}, 1, false);
+  copy_yank((const char *[]){f2}, 1, false);
   copy_paste(d);
 
   test_assert_file_exists(c, "file1");
@@ -107,13 +107,49 @@ static void test_copy_file_paste_twice(void) {
   char *d1 = test_create_dir(c, "dir1");
   char *d2 = test_create_dir(c, "dir2");
 
-  copy_yank(f, false);
+  copy_yank((const char *[]){f}, 1, false);
   copy_paste(d1);
   copy_paste(d2);
 
   test_assert_file_exists(c, "file");
   test_assert_file_exists(c, "dir1/file");
   test_assert_file_exists(c, "dir2/file");
+
+  test_cleanup_files(c);
+}
+
+static void test_copy_multiple_files(void) {
+  const char *c = __func__;
+
+  char *f1 = test_create_file(c, "file1");
+  char *f2 = test_create_file(c, "file2");
+  char *d = test_create_dir(c, "dir");
+
+  copy_yank((const char *[]){f1, f2}, 2, false);
+  copy_paste(d);
+
+  test_assert_file_exists(c, "file1");
+  test_assert_file_exists(c, "file2");
+  test_assert_file_exists(c, "dir/file1");
+  test_assert_file_exists(c, "dir/file2");
+
+  test_cleanup_files(c);
+}
+
+static void test_move_multiple_files(void) {
+  const char *c = __func__;
+
+  char *f1 = test_create_file(c, "file1");
+  char *f2 = test_create_file(c, "file2");
+  char *target = test_create_dir(c, "target");
+
+  copy_yank((const char *[]){f1, f2}, 2, true);
+  copy_paste(target);
+
+  test_assert_file_not_exists(c, "file1");
+  test_assert_file_not_exists(c, "file2");
+  test_assert_file_exists(c, "target/file1");
+  test_assert_file_exists(c, "target/file2");
 
   test_cleanup_files(c);
 }
@@ -128,6 +164,10 @@ Test copy_tests[] = {
     {"/copy_file_free_file_name_before_pasting", test_copy_file_free_file_name_before_pasting},
     {"/copy_file_copy_twice", test_copy_file_copy_twice},
     {"/copy_file_paste_twice", test_copy_file_paste_twice},
+
+    // multi-file
+    {"/copy_multiple_files", test_copy_multiple_files},
+    {"/move_multiple_files", test_move_multiple_files},
 
     {NULL, NULL},
 };

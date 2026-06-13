@@ -18,7 +18,6 @@
 * Remember cursor position in right column for all directories (it's currently reset when moving up/down)
 * Move cursor to new file/dir after commands, touch/mkdir/etc
 * Move cursor to pasted file/dir after copy/move
-* Copy/cut multiple selected files
 * Show progress for copy/move
 * Handle collision with existing files when pasting after copy/move
 * Bind commands to keys in config.h (can be used for bookmarks with cd)
@@ -27,6 +26,7 @@
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
 * Add OPT_CMD_HISTORY to disable command history completely
+* Multiselection delete
 
 ## General improvements
 

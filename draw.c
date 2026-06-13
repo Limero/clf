@@ -145,11 +145,16 @@ static int int_digits(const int n) {
 }
 
 static bool is_yanked_entry(const char *base_dir, const char *entry_name) {
-  if (g_yanked_path[0] == '\0')
-    return false;
   char entry_path[PATH_MAX];
   const int needed = snprintf(entry_path, sizeof entry_path, "%s/%s", base_dir, entry_name);
-  return (needed >= 0 && needed < (int)sizeof entry_path && strcmp(entry_path, g_yanked_path) == 0);
+  if (needed < 0 || needed >= (int)sizeof entry_path)
+    return false;
+
+  for (int i = 0; i < g_yanked_count; i++) {
+    if (strcmp(entry_path, g_yanked_paths[i]) == 0)
+      return true;
+  }
+  return false;
 }
 
 static uintattr_t yank_bg(void) {
@@ -228,7 +233,7 @@ static void draw_left_column(const int offset_x, const int width) {
     *slash = '\0';
   }
 
-  const bool has_yanked = g_yanked_path[0] != '\0';
+  const bool has_yanked = g_yanked_count > 0;
 
   int y = 1;
   for (int i = start_idx; i < stop_idx; i++) {
@@ -369,7 +374,7 @@ static void draw_right_column(const int offset_x, const int width) {
 
   char right_base[PATH_MAX];
   const int needed = snprintf(right_base, sizeof right_base, "%s/%s", g_cwd, g_cursor.name);
-  const bool has_yanked = g_yanked_path[0] != '\0' && needed >= 0 && needed < (int)sizeof right_base;
+  const bool has_yanked = g_yanked_count > 0 && needed >= 0 && needed < (int)sizeof right_base;
 
   for (int i = start_idx; i < stop_idx; i++) {
     const uintattr_t fg = color_file(g_namelist_right[i]->d_type);

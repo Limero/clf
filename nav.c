@@ -285,19 +285,30 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     return 0;
   case 'y':
   case 'd': {
-    if (g_cursor.name[0] == '\0') {
-      snprintf(g_msg, sizeof g_msg, "no file selected");
-      g_msg_type = MSG_TYPE_ERROR;
-      return 0;
+    if (g_selected_count > 0) {
+      const char *paths[MAX_SELECTED];
+      for (int i = 0; i < g_selected_count; i++)
+        paths[i] = g_selected_paths[i];
+      copy_yank(paths, g_selected_count, ev->ch == 'd');
+      g_selected_count = 0;
+      g_update.dir_middle = true;
+      tb_clear();
+    } else {
+      if (g_cursor.name[0] == '\0') {
+        snprintf(g_msg, sizeof g_msg, "no file selected");
+        g_msg_type = MSG_TYPE_ERROR;
+        return 0;
+      }
+      char cwd_with_cursor[PATH_MAX];
+      int needed = snprintf(cwd_with_cursor, PATH_MAX, "%s/%s", g_cwd, g_cursor.name);
+      if (needed < 0 || needed >= PATH_MAX) {
+        snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
+        g_msg_type = MSG_TYPE_ERROR;
+        return 0;
+      }
+      const char *p = cwd_with_cursor;
+      copy_yank(&p, 1, ev->ch == 'd');
     }
-    char cwd_with_cursor[PATH_MAX];
-    int needed = snprintf(cwd_with_cursor, PATH_MAX, "%s/%s", g_cwd, g_cursor.name);
-    if (needed < 0 || needed >= PATH_MAX) {
-      snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
-      g_msg_type = MSG_TYPE_ERROR;
-      return 0;
-    }
-    copy_yank(cwd_with_cursor, ev->ch == 'd');
     return 0;
   }
   case 'D':
