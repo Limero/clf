@@ -305,6 +305,7 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     char *new_name = nav_get_prompt_input("rename: ", g_cursor.name);
     if (new_name && new_name[0] && strcmp(new_name, g_cursor.name) != 0) {
       os_move(g_cursor.name, new_name);
+      memcpy(g_cursor.name, new_name, sizeof(g_cursor.name));
       g_update.dir_middle = true;
       g_update.dir_right = true;
       tb_clear();
