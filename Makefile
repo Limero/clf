@@ -39,6 +39,6 @@ help:
 	@echo "  install     - Install to ~/.local/bin"
 	@echo "  debug       - Build with debug symbols and address sanitizer"
 	@echo "  release     - Build optimized release version"
-	@echo "  test        - Run all tests
-	@echo "  lint        - Format all source files with clang-format
+	@echo "  test        - Run all tests"
+	@echo "  lint        - Format all source files with clang-format"
 	@echo "  help        - Show this help message"

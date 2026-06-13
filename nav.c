@@ -52,7 +52,7 @@ static int nav_handle_input_key(const struct tb_event *ev, char *buf, int *curso
 
 static bool nav_get_confirmation(const char *msg1, const char *msg2) {
   draw_status_confirmation(msg1, msg2);
-  struct tb_event ev;
+  struct tb_event ev = {0};
   tb_poll_event(&ev);
   return ev.ch == 'y' || ev.ch == 'Y';
 }
@@ -65,7 +65,7 @@ static char *nav_get_prompt_input(const char *prompt, const char *initial) {
 
   while (1) {
     draw_status_prompt(prompt, buf, cursor);
-    struct tb_event ev;
+    struct tb_event ev = {0};
     tb_poll_event(&ev);
 
     int r = nav_handle_input_key(&ev, buf, &cursor, &len);
