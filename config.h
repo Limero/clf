@@ -21,4 +21,4 @@ const unsigned int OPT_CMD_COMPLETE = 1;
 
 // Delay in ms before showing the ">" indicator when running a command
 // Prevents flickering for fast commands like :pwd
-const unsigned int CMD_INDICATOR_DELAY_MS = 80;
+const unsigned int OPT_CMD_INDICATOR_DELAY_MS = 80;
