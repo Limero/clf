@@ -178,6 +178,7 @@ static void nav_dir_back(void) {
   }
   g_right_column_idx = g_cursor.idx;
   g_cursor.idx = g_left_column_idx;
+  g_cursor.name[0] = '\0';
 }
 
 static void nav_dir_enter(void) {
@@ -205,6 +206,7 @@ static void nav_dir_enter(void) {
     return;
   }
   g_cursor.idx = g_right_column_idx;
+  g_cursor.name[0] = '\0';
   g_right_column_idx = 0;
 }
 

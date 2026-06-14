@@ -7,7 +7,6 @@
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
 * Possible to overflow when adding to command history and if the commands are too long
 * In small window, preview output can overwrite status bar
-* When moving left to parent folder and back, it moves the cursor to the wrong item
 
 ## Features
 
