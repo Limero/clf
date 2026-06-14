@@ -133,6 +133,40 @@ void set_cursor_idx_to_search(const bool forward, const int start_idx) {
   }
 }
 
+bool set_cursor_idx_to_locate(const bool forward, const int start_idx, const char ch) {
+  assert(start_idx >= -1 && start_idx <= g_items_in_middle_dir);
+
+  if (forward) {
+    for (int i = start_idx; i < g_items_in_middle_dir; i++) {
+      if (g_namelist_middle[i]->d_name[0] == ch) {
+        g_cursor.idx = i;
+        return true;
+      }
+    }
+    for (int i = 0; i < start_idx; i++) {
+      if (g_namelist_middle[i]->d_name[0] == ch) {
+        g_cursor.idx = i;
+        return true;
+      }
+    }
+  } else {
+    for (int i = start_idx; i >= 0; i--) {
+      if (g_namelist_middle[i]->d_name[0] == ch) {
+        g_cursor.idx = i;
+        return true;
+      }
+    }
+    for (int i = g_items_in_middle_dir - 1; i > start_idx; i--) {
+      if (g_namelist_middle[i]->d_name[0] == ch) {
+        g_cursor.idx = i;
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
 static int int_digits(const int n) {
   if (n < 10)
     return 1;

@@ -27,7 +27,6 @@
 * Show file name in success message after moving/copying just one file
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format
-* Add f/F locate-commands
 
 ## General improvements
 

@@ -58,6 +58,20 @@ static bool nav_get_confirmation(const char *msg1, const char *msg2) {
   return ev.ch == 'y' || ev.ch == 'Y';
 }
 
+// Show a prompt and return a single character from the user
+static int nav_get_prompt_char(const char *prompt) {
+  const int y = tb_height() - 1;
+  const int prompt_len = strlen(prompt);
+  clear_line(y);
+  tb_print(0, y, COLOR_DEFAULT, COLOR_DEFAULT, prompt);
+  tb_set_cursor(prompt_len, y);
+  tb_present();
+  struct tb_event ev = {0};
+  tb_poll_event(&ev);
+  return ev.ch;
+}
+
+// Show a prompt with editable input buffer, returns the result or NULL on cancel
 static char *nav_get_prompt_input(const char *prompt, const char *initial) {
   static char buf[4096];
   strlcpy(buf, initial, sizeof buf);
@@ -397,6 +411,19 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     return 0;
   case 'q':
     return -1;
+  case 'f':
+  case 'F': {
+    if (!g_items_in_middle_dir)
+      return 0;
+    const int ch = nav_get_prompt_char(ev->ch == 'f' ? "find: " : "find-back: ");
+    if (ch && !set_cursor_idx_to_locate(ev->ch == 'f', g_cursor.idx + (ev->ch == 'f' ? 1 : -1), ch)) {
+      snprintf(g_msg, sizeof g_msg, "find: pattern not found: %c", ch);
+      g_msg_type = MSG_TYPE_ERROR;
+    }
+    tb_hide_cursor();
+    tb_clear();
+    return 0;
+  }
   }
 
   if (ev->ch >= '0' && ev->ch <= '9') {

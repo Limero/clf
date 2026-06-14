@@ -19,7 +19,7 @@ const unsigned int TAB_WIDTH = 4;
 // Scrolling can wrap around the file list
 const unsigned int OPT_WRAP_SCROLL = 1;
 
-// Searching can wrap around the file list
+// Searching can wrap around the file list (always enabled for f/F)
 const unsigned int OPT_WRAP_SCAN = 1;
 
 // Show the position number for directory items on the left side of the pane
@@ -28,7 +28,7 @@ const unsigned int OPT_NUMBER = 1;
 // Show the position number relative to the current line
 const unsigned int OPT_RELATIVE_NUMBER = 1;
 
-// Ignore case in search and command tab completion
+// Ignore case in search and command tab completion (always disabled for f/F)
 const unsigned int OPT_IGNORE_CASE = 1;
 
 // Move cursor to results while searching

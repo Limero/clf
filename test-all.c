@@ -2,6 +2,7 @@
 
 #include "complete_test.c"
 #include "copy_test.c"
+#include "nav_test.c"
 #include "os_test.c"
 
 static int count_test_files(const char *base_path) {
@@ -42,7 +43,8 @@ Test main_tests[] = {
 };
 
 Suite test_suites[] = {
-    {"main", main_tests}, {"complete", complete_tests}, {"copy", copy_tests}, {"os", os_tests}, {NULL, NULL},
+    {"main", main_tests}, {"complete", complete_tests}, {"copy", copy_tests}, {"nav", nav_tests}, {"os", os_tests},
+    {NULL, NULL},
 };
 
 void test_all_testfiles_included(void) {
