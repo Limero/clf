@@ -26,7 +26,6 @@
 * Support running commands with fish shell, instead of falling back on bash
 * Show file name in success message after moving/copying just one file
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
-* 'incsearch' config option to be able to disable the automatic cursor movement while searching
 * 'timefmt' config option to change status bar date/time format
 * Add f/F locate-commands
 

@@ -31,6 +31,9 @@ const unsigned int OPT_RELATIVE_NUMBER = 1;
 // Ignore case in search and command tab completion
 const unsigned int OPT_IGNORE_CASE = 1;
 
+// Move cursor to results while searching
+const unsigned int OPT_INCSEARCH = 1;
+
 // Delay in ms before showing the ">" indicator when running a command
 // Prevents flickering for fast commands like :pwd
 const unsigned int OPT_CMD_INDICATOR_DELAY_MS = 80;

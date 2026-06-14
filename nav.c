@@ -441,6 +441,8 @@ static int nav_handle_event_command(const struct tb_event *ev) {
 
   if (r == 1) {
     if (g_search_idx_before >= 0) {
+      if (!OPT_INCSEARCH)
+        set_cursor_idx_to_search(true, 0);
       nav_switch_mode(MODE_NORMAL);
       tb_clear();
       return 0;
@@ -469,7 +471,8 @@ static int nav_handle_event_command(const struct tb_event *ev) {
     return 0;
   }
 
-  if (g_search_idx_before >= 0 && (ev->ch || ev->key == TB_KEY_BACKSPACE || ev->key == TB_KEY_BACKSPACE2)) {
+  if (OPT_INCSEARCH && g_search_idx_before >= 0 &&
+      (ev->ch || ev->key == TB_KEY_BACKSPACE || ev->key == TB_KEY_BACKSPACE2)) {
     set_cursor_idx_to_search(true, 0);
     tb_clear();
   }
