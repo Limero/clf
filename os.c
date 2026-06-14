@@ -373,25 +373,22 @@ void os_exec_output_deferred(const char *c, const char *arg, void (*indicator_cb
     g_msg_type = MSG_TYPE_ERROR;
   }
 
-  char prev_cwd[PATH_MAX];
-  if (getcwd(prev_cwd, sizeof prev_cwd) == NULL) {
-    prev_cwd[0] = '\0';
-  }
-
   char *cwd_marker_start = NULL;
   for (char *p = g_msg; (p = strstr(p, marker)) != NULL; p += 1) {
     cwd_marker_start = p;
   }
   if (cwd_marker_start) {
     *cwd_marker_start = '\0';
-    if (chdir(cwd_marker_start + strlen(marker)) == -1) {
+    const char *new_cwd = cwd_marker_start + strlen(marker);
+    strlcpy(g_prev_cwd, g_cwd, sizeof g_prev_cwd);
+    if (chdir(new_cwd) == -1) {
       snprintf(g_msg, sizeof g_msg, "(%s chdir) %s", __func__, strerror(errno));
       g_msg_type = MSG_TYPE_ERROR;
     } else if (getcwd(g_cwd, sizeof g_cwd) == NULL) {
       snprintf(g_msg, sizeof g_msg, "(%s getcwd) %s", __func__, strerror(errno));
       g_msg_type = MSG_TYPE_ERROR;
     }
-    if (strcmp(prev_cwd, g_cwd) != 0) {
+    if (strcmp(g_prev_cwd, g_cwd) != 0) {
       g_cursor.idx = 0;
     }
   }

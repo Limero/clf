@@ -50,6 +50,7 @@ static int g_yanked_count = 0;
 static char g_yanked_paths[MAX_SELECTED][PATH_MAX];
 
 static char g_cwd[PATH_MAX] = ".";
+static char g_prev_cwd[PATH_MAX] = "";
 
 static int g_items_in_left_dir = 0;
 static int g_items_in_middle_dir = 0;

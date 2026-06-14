@@ -42,6 +42,8 @@ All character keybinds below are configurable in `KEY_COMMANDS[]` in [config.h](
     * `ch` - `cd ~`
     * `ct` - `cd /tmp`
     * `cd` - `cd ~/Downloads`
+* Directory history
+    * `-` or `:cd -` - go back to previous directory (toggles between current and previous)
 * `Ctrl+H` - toggle hidden files
 * `Ctrl+R` - refresh directories
 * `q`, `Ctrl+C`, or `:q` - exit

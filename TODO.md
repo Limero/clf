@@ -6,7 +6,6 @@
 * With OPT_FULL_SHELL set to 0, long running commands like `:sleep 10` can't be cancelled with CTRL+C. It works with OPT_FULL_SHELL set to 1
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
 * Possible to overflow when adding to command history and if the commands are too long
-* In small window, preview output can overwrite status bar
 
 ## Features
 
@@ -26,10 +25,8 @@
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format
 * List all options when pressing key1 in `config.h` keybinds, like lf. Will require multi-line support in `draw_message()`
-* Support `cd -` to go back to directory before `cd`, and add custom keybind (`-`) for it
 
 ## General improvements
-
 * Do more partial clearings instead of full `tb_clear()`. Maybe the draw functions for each column should trigger clear if there are changes.
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `:pwd`. Commands like `:touch` should still update. Probably have to check if files in directory were modified.

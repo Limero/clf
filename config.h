@@ -33,6 +33,9 @@ static const struct {
     {'S', 0, "shell"},
     {'q', 0, "quit"},
 
+    // Directory history
+    {'-', 0, "nav_cd_prev"},
+
     // Custom shell commands
     {'c', 'h', ":cd ~"},
     {'c', 't', ":cd /tmp"},

@@ -161,6 +161,8 @@ static void nav_dir_back(void) {
     return;
   }
 
+  strlcpy(g_prev_cwd, g_cwd, sizeof g_prev_cwd);
+
   g_update.dir_left = true;
   g_update.dir_middle = true;
   g_update.dir_right = true;
@@ -182,6 +184,8 @@ static void nav_dir_back(void) {
 }
 
 static void nav_dir_enter(void) {
+  strlcpy(g_prev_cwd, g_cwd, sizeof g_prev_cwd);
+
   g_update.dir_left = true;
   g_update.dir_middle = true;
   g_update.dir_right = true;
@@ -453,6 +457,39 @@ static int nav_find_backward(const int repeat) {
   return nav_find(repeat, false);
 }
 
+static int nav_cd_prev(const int repeat) {
+  (void)repeat;
+  if (g_prev_cwd[0] == '\0') {
+    snprintf(g_msg, sizeof g_msg, "no previous directory");
+    g_msg_type = MSG_TYPE_ERROR;
+    return 0;
+  }
+
+  char target[PATH_MAX];
+  strlcpy(target, g_prev_cwd, sizeof target);
+
+  if (chdir(target) != 0) {
+    snprintf(g_msg, sizeof g_msg, "(%s chdir) %s", __func__, strerror(errno));
+    g_msg_type = MSG_TYPE_ERROR;
+    return 0;
+  }
+
+  strlcpy(g_prev_cwd, g_cwd, sizeof g_prev_cwd);
+  strlcpy(g_cwd, target, sizeof g_cwd);
+
+  g_update.dir_left = true;
+  g_update.dir_middle = true;
+  g_update.dir_right = true;
+  tb_clear();
+  g_cursor.idx = 0;
+  g_right_column_idx = 0;
+  g_cursor.name[0] = '\0';
+
+  snprintf(g_msg, sizeof g_msg, "%s", g_cwd);
+  g_msg_type = MSG_TYPE_INFO;
+  return 0;
+}
+
 static int nav_quit(const int repeat) {
   (void)repeat;
   return -1;
@@ -484,6 +521,7 @@ static const struct {
     {"command", nav_command},
     {"shell", nav_shell},
     {"quit", nav_quit},
+    {"nav_cd_prev", nav_cd_prev},
     {"find", nav_find_forward},
     {"find_back", nav_find_backward},
 };
@@ -636,6 +674,11 @@ static int nav_handle_event_command(const struct tb_event *ev) {
       return -1;
     }
     command_history_add();
+    if (strcmp(g_current_command.chars, "cd -") == 0) {
+      nav_cd_prev(0);
+      nav_switch_mode(MODE_NORMAL);
+      return 0;
+    }
     os_exec_output_deferred(g_current_command.chars, "", draw_status_running_command, OPT_CMD_INDICATOR_DELAY_MS);
     nav_switch_mode(MODE_NORMAL);
     g_update.dir_left = true;
