@@ -35,6 +35,6 @@
 * Do more partial clearings instead of full `tb_clear()`. Maybe the draw functions for each column should trigger clear if there are changes.
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `:pwd`. Commands like `:touch` should still update. Probably have to check if files in directory were modified.
-* Add comments to all config options
 * When multi-selection is disabled, program still creates memory for the full clipboard
 * Performance config flags might have to converted to `#define` to actually be useful
+* `-r` is appended to `CMD_COPY`, which might be a problem if it's changed to something different
