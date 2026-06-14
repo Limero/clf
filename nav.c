@@ -102,20 +102,20 @@ static void nav_move_to_line(const int l) {
   g_right_column_idx = 0;
 }
 
-static void nav_top(void) {
+static void nav_move_top(void) {
   nav_move_to_line(0);
 }
 
-static void nav_bottom(void) {
+static void nav_move_bottom(void) {
   nav_move_to_line(g_items_in_middle_dir - 1);
 }
 
-static void nav_up(const int n) {
+static void nav_move_up(const int n) {
   if (g_cursor.idx - n < 0) {
     if (n > 1) {
-      nav_top();
+      nav_move_top();
     } else if (OPT_WRAP_SCROLL) {
-      nav_bottom();
+      nav_move_bottom();
     }
     return;
   }
@@ -126,12 +126,12 @@ static void nav_up(const int n) {
   g_right_column_idx = 0;
 }
 
-static void nav_down(const int n) {
+static void nav_move_down(const int n) {
   if (g_cursor.idx + n + 1 > g_items_in_middle_dir) {
     if (n > 1) {
-      nav_bottom();
+      nav_move_bottom();
     } else if (OPT_WRAP_SCROLL) {
-      nav_top();
+      nav_move_top();
     }
     return;
   }
@@ -142,21 +142,21 @@ static void nav_down(const int n) {
   g_right_column_idx = 0;
 }
 
-static void nav_page_up(void) {
+static void nav_move_page_up(void) {
   g_update.dir_right = true;
   tb_clear();
   g_cursor.idx = MAX(g_cursor.idx - tb_height() / 2, 0);
   g_right_column_idx = 0;
 }
 
-static void nav_page_down(void) {
+static void nav_move_page_down(void) {
   g_update.dir_right = true;
   tb_clear();
   g_cursor.idx = MIN(g_cursor.idx + tb_height() / 2, g_items_in_middle_dir - 1);
   g_right_column_idx = 0;
 }
 
-static void nav_left(void) {
+static void nav_dir_back(void) {
   if (strcmp(g_cwd, "/") == 0) {
     return;
   }
@@ -180,7 +180,7 @@ static void nav_left(void) {
   g_cursor.idx = g_left_column_idx;
 }
 
-static void nav_right(void) {
+static void nav_dir_enter(void) {
   g_update.dir_left = true;
   g_update.dir_middle = true;
   g_update.dir_right = true;
@@ -221,7 +221,296 @@ static void nav_switch_mode(const modes_t new_mode) {
   }
 }
 
-static bool nav_handle_config_key(const struct tb_event *ev) {
+static int nav_up(const int repeat) {
+  nav_move_up(repeat ? repeat : 1);
+  return 0;
+}
+
+static int nav_down(const int repeat) {
+  nav_move_down(repeat ? repeat : 1);
+  return 0;
+}
+
+static int nav_left(const int repeat) {
+  (void)repeat;
+  nav_dir_back();
+  return 0;
+}
+
+static int nav_right(const int repeat) {
+  (void)repeat;
+  nav_dir_enter();
+  return 0;
+}
+
+static int nav_goto(const int repeat) {
+  nav_move_to_line(repeat ? repeat - 1 : 0);
+  return 0;
+}
+
+static int nav_bottom(const int repeat) {
+  (void)repeat;
+  nav_move_bottom();
+  return 0;
+}
+
+static int nav_page_up(const int repeat) {
+  (void)repeat;
+  nav_move_page_up();
+  return 0;
+}
+
+static int nav_page_down(const int repeat) {
+  (void)repeat;
+  nav_move_page_down();
+  return 0;
+}
+
+static int nav_multi_select(const int repeat) {
+  (void)repeat;
+  if (!OPT_MULTISELECT || !g_items_in_middle_dir)
+    return 0;
+  char path[PATH_MAX];
+  const int needed = snprintf(path, sizeof path, "%s/%s", g_cwd, g_namelist_middle[g_cursor.idx]->d_name);
+  if (needed < 0 || needed >= (int)sizeof path) {
+    snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
+    g_msg_type = MSG_TYPE_ERROR;
+    return 0;
+  }
+  const int found = selected_index(path);
+  if (found >= 0) {
+    g_selected_count--;
+    if (found < g_selected_count)
+      strlcpy(g_selected_paths[found], g_selected_paths[g_selected_count], sizeof g_selected_paths[0]);
+  } else if (g_selected_count >= MAX_SELECTED) {
+    snprintf(g_msg, sizeof g_msg, "max %d selected files", MAX_SELECTED);
+    g_msg_type = MSG_TYPE_ERROR;
+    return 0;
+  } else {
+    strlcpy(g_selected_paths[g_selected_count++], path, sizeof g_selected_paths[0]);
+  }
+  g_cursor.name[0] = '\0';
+  g_update.dir_middle = true;
+  tb_clear();
+  nav_move_down(1);
+  return 0;
+}
+
+static int nav_yank(const int repeat, const bool is_cut) {
+  (void)repeat;
+  if (g_selected_count > 0) {
+    const char *paths[MAX_SELECTED];
+    for (int i = 0; i < g_selected_count; i++)
+      paths[i] = g_selected_paths[i];
+    copy_yank(paths, g_selected_count, is_cut);
+    g_selected_count = 0;
+    g_update.dir_middle = true;
+    tb_clear();
+  } else {
+    if (g_cursor.name[0] == '\0') {
+      snprintf(g_msg, sizeof g_msg, "no file selected");
+      g_msg_type = MSG_TYPE_ERROR;
+      return 0;
+    }
+    char cwd_with_cursor[PATH_MAX];
+    const int needed = snprintf(cwd_with_cursor, PATH_MAX, "%s/%s", g_cwd, g_cursor.name);
+    if (needed < 0 || needed >= PATH_MAX) {
+      snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
+      g_msg_type = MSG_TYPE_ERROR;
+      return 0;
+    }
+    const char *p = cwd_with_cursor;
+    copy_yank(&p, 1, is_cut);
+  }
+  return 0;
+}
+
+static int nav_yank_copy(const int repeat) {
+  return nav_yank(repeat, false);
+}
+static int nav_yank_cut(const int repeat) {
+  return nav_yank(repeat, true);
+}
+
+static int nav_delete(const int repeat) {
+  (void)repeat;
+  if (!g_items_in_middle_dir)
+    return 0;
+  if (g_selected_count > 0) {
+    char msg[64];
+    snprintf(msg, sizeof msg, "%d items", g_selected_count);
+    if (nav_get_confirmation("delete ", msg)) {
+      for (int i = 0; i < g_selected_count; i++)
+        os_exec_output(CMD_DELETE, g_selected_paths[i]);
+      g_selected_count = 0;
+      g_update.dir_middle = true;
+      g_update.dir_right = true;
+      tb_clear();
+    }
+  } else if (nav_get_confirmation("delete ", g_cursor.name)) {
+    os_exec_output(CMD_DELETE, g_cursor.name);
+    g_cursor.idx = g_cursor.idx ? g_cursor.idx - 1 : 0;
+    g_update.dir_middle = true;
+    g_update.dir_right = true;
+    tb_clear();
+  }
+  return 0;
+}
+
+static int nav_paste(const int repeat) {
+  (void)repeat;
+  if (!copy_paste(g_cwd))
+    return 0;
+  g_update.dir_left = true;
+  g_update.dir_middle = true;
+  g_update.dir_right = true;
+  tb_clear();
+  return 0;
+}
+
+static int nav_rename(const int repeat) {
+  (void)repeat;
+  if (!g_items_in_middle_dir)
+    return 0;
+  char *new_name = nav_get_prompt_input("rename: ", g_cursor.name);
+  if (new_name && new_name[0] && strcmp(new_name, g_cursor.name) != 0) {
+    char dest_path[PATH_MAX * 2];
+    snprintf(dest_path, sizeof dest_path, "%s/%s", g_cwd, new_name);
+    if (access(dest_path, F_OK) == 0) {
+      if (!nav_get_confirmation("replace ", new_name))
+        return 0;
+    }
+    os_move(g_cursor.name, new_name);
+    memcpy(g_cursor.name, new_name, sizeof(g_cursor.name));
+    g_update.dir_middle = true;
+    g_update.dir_right = true;
+    tb_clear();
+  }
+  tb_hide_cursor();
+  return 0;
+}
+
+static int nav_search_next(const int repeat) {
+  (void)repeat;
+  if (g_search_idx_before == -1)
+    return 0;
+  set_cursor_idx_to_search(true, g_cursor.idx + 1);
+  tb_clear();
+  return 0;
+}
+
+static int nav_search_prev(const int repeat) {
+  (void)repeat;
+  if (g_search_idx_before == -1)
+    return 0;
+  set_cursor_idx_to_search(false, g_cursor.idx - 1);
+  tb_clear();
+  return 0;
+}
+
+static int nav_search(const int repeat) {
+  (void)repeat;
+  g_search_idx_before = g_cursor.idx;
+  nav_switch_mode(MODE_COMMAND);
+  return 0;
+}
+
+static int nav_command(const int repeat) {
+  (void)repeat;
+  g_search_idx_before = -1;
+  nav_switch_mode(MODE_COMMAND);
+  return 0;
+}
+
+static int nav_shell(const int repeat) {
+  (void)repeat;
+  tb_shutdown();
+  os_exec("$SHELL", "");
+  tb_init();
+  return 0;
+}
+
+static int nav_find(const int repeat, const bool forward) {
+  (void)repeat;
+  if (!g_items_in_middle_dir)
+    return 0;
+  const int ch = nav_get_prompt_char(forward ? "find: " : "find-back: ");
+  if (ch && !set_cursor_idx_to_locate(forward, g_cursor.idx + (forward ? 1 : -1), ch)) {
+    snprintf(g_msg, sizeof g_msg, "find: pattern not found: %c", ch);
+    g_msg_type = MSG_TYPE_ERROR;
+  }
+  tb_hide_cursor();
+  tb_clear();
+  return 0;
+}
+
+static int nav_find_forward(const int repeat) {
+  return nav_find(repeat, true);
+}
+static int nav_find_backward(const int repeat) {
+  return nav_find(repeat, false);
+}
+
+static int nav_quit(const int repeat) {
+  (void)repeat;
+  return -1;
+}
+
+typedef int (*action_fn)(int repeat);
+
+static const struct {
+  const char *name;
+  action_fn fn;
+} BUILTIN_ACTIONS[] = {
+    {"nav_up", nav_up},
+    {"nav_down", nav_down},
+    {"nav_left", nav_left},
+    {"nav_right", nav_right},
+    {"nav_goto", nav_goto},
+    {"nav_bottom", nav_bottom},
+    {"nav_page_up", nav_page_up},
+    {"nav_page_down", nav_page_down},
+    {"multi_select", nav_multi_select},
+    {"yank_copy", nav_yank_copy},
+    {"yank_cut", nav_yank_cut},
+    {"delete", nav_delete},
+    {"paste", nav_paste},
+    {"rename", nav_rename},
+    {"search_next", nav_search_next},
+    {"search_prev", nav_search_prev},
+    {"search", nav_search},
+    {"command", nav_command},
+    {"shell", nav_shell},
+    {"quit", nav_quit},
+    {"find", nav_find_forward},
+    {"find_back", nav_find_backward},
+};
+static const int BUILTIN_ACTIONS_LEN = sizeof(BUILTIN_ACTIONS) / sizeof(BUILTIN_ACTIONS[0]);
+
+static int nav_execute_cmd(const char *cmd, const int repeat) {
+  if (cmd[0] == ':') {
+    os_exec_output_deferred(cmd + 1, "", draw_status_running_command, OPT_CMD_INDICATOR_DELAY_MS);
+    g_update.dir_left = true;
+    g_update.dir_middle = true;
+    g_update.dir_right = true;
+    tb_clear();
+    return 1;
+  }
+  for (int j = 0; j < BUILTIN_ACTIONS_LEN; j++) {
+    if (strcmp(cmd, BUILTIN_ACTIONS[j].name) == 0) {
+      const int r = BUILTIN_ACTIONS[j].fn(repeat);
+      if (r < 0)
+        return -1;
+      return 1;
+    }
+  }
+  snprintf(g_msg, sizeof g_msg, "unknown action: %s", cmd);
+  g_msg_type = MSG_TYPE_ERROR;
+  tb_clear();
+  return 1;
+}
+
+static int nav_handle_config_key(const struct tb_event *ev, const int repeat) {
   bool has_prefix = false;
   for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
     if (KEY_COMMANDS[i].key2 != 0 && KEY_COMMANDS[i].key1 == ev->ch) {
@@ -237,242 +526,65 @@ static bool nav_handle_config_key(const struct tb_event *ev) {
     tb_hide_cursor();
     for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
       if (KEY_COMMANDS[i].key1 == ev->ch && KEY_COMMANDS[i].key2 == ch2) {
-        os_exec_output_deferred(KEY_COMMANDS[i].cmd, "", draw_status_running_command, OPT_CMD_INDICATOR_DELAY_MS);
-        g_update.dir_left = true;
-        g_update.dir_middle = true;
-        g_update.dir_right = true;
-        tb_clear();
-        return true;
+        const int r = nav_execute_cmd(KEY_COMMANDS[i].cmd, repeat);
+        if (r < 0)
+          return -1;
+        return 1;
       }
     }
     snprintf(g_msg, sizeof g_msg, "unknown mapping: %c%c", ev->ch, ch2);
     g_msg_type = MSG_TYPE_ERROR;
     tb_clear();
-    return true;
+    return 1;
   }
 
   for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
     if (KEY_COMMANDS[i].key2 == 0 && ev->ch == KEY_COMMANDS[i].key1) {
-      os_exec_output_deferred(KEY_COMMANDS[i].cmd, "", draw_status_running_command, OPT_CMD_INDICATOR_DELAY_MS);
-      g_update.dir_left = true;
-      g_update.dir_middle = true;
-      g_update.dir_right = true;
-      tb_clear();
-      return true;
+      const int r = nav_execute_cmd(KEY_COMMANDS[i].cmd, repeat);
+      if (r < 0)
+        return -1;
+      return 1;
     }
   }
 
-  return false;
+  return 0;
 }
 
 static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
-  if (nav_handle_config_key(ev))
+  const int r = nav_handle_config_key(ev, *repeat);
+  if (r < 0)
+    return -1;
+  if (r > 0)
     return 0;
 
   switch (ev->key) {
   case TB_KEY_ARROW_UP:
-    nav_up(*repeat ? *repeat : 1);
+    nav_move_up(*repeat ? *repeat : 1);
     return 0;
   case TB_KEY_ARROW_DOWN:
-    nav_down(*repeat ? *repeat : 1);
+    nav_move_down(*repeat ? *repeat : 1);
     return 0;
   case TB_KEY_ARROW_LEFT:
-    nav_left();
+    nav_dir_back();
     return 0;
   case TB_KEY_ENTER:
   case TB_KEY_ARROW_RIGHT:
-    nav_right();
+    nav_dir_enter();
     return 0;
   case TB_KEY_HOME:
     nav_move_to_line(*repeat ? *repeat - 1 : 0);
     return 0;
   case TB_KEY_END:
-    nav_bottom();
+    nav_move_bottom();
     return 0;
   case TB_KEY_CTRL_U:
   case TB_KEY_PGUP:
-    nav_page_up();
+    nav_move_page_up();
     return 0;
   case TB_KEY_CTRL_D:
   case TB_KEY_PGDN:
-    nav_page_down();
+    nav_move_page_down();
     return 0;
-  }
-
-  switch (ev->ch) {
-  case 'k':
-    nav_up(*repeat ? *repeat : 1);
-    return 0;
-  case 'j':
-    nav_down(*repeat ? *repeat : 1);
-    return 0;
-  case 'h':
-    nav_left();
-    return 0;
-  case 'l':
-    nav_right();
-    return 0;
-  case 'g':
-    nav_move_to_line(*repeat ? *repeat - 1 : 0);
-    return 0;
-  case 'G':
-    nav_bottom();
-    return 0;
-  case ' ':
-    if (!OPT_MULTISELECT || !g_items_in_middle_dir) {
-      return 0;
-    }
-    char path[PATH_MAX];
-    const int needed = snprintf(path, sizeof path, "%s/%s", g_cwd, g_namelist_middle[g_cursor.idx]->d_name);
-    if (needed < 0 || needed >= (int)sizeof path) {
-      snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
-      g_msg_type = MSG_TYPE_ERROR;
-      return 0;
-    }
-    const int found = selected_index(path);
-    if (found >= 0) {
-      g_selected_count--;
-      if (found < g_selected_count) {
-        strlcpy(g_selected_paths[found], g_selected_paths[g_selected_count], sizeof g_selected_paths[0]);
-      }
-    } else if (g_selected_count >= MAX_SELECTED) {
-      snprintf(g_msg, sizeof g_msg, "max %d selected files", MAX_SELECTED);
-      g_msg_type = MSG_TYPE_ERROR;
-      return 0;
-    } else {
-      strlcpy(g_selected_paths[g_selected_count++], path, sizeof g_selected_paths[0]);
-    }
-    g_cursor.name[0] = '\0';
-    g_update.dir_middle = true;
-    tb_clear();
-    nav_down(1);
-    return 0;
-  case 'y':
-  case 'd': {
-    if (g_selected_count > 0) {
-      const char *paths[MAX_SELECTED];
-      for (int i = 0; i < g_selected_count; i++)
-        paths[i] = g_selected_paths[i];
-      copy_yank(paths, g_selected_count, ev->ch == 'd');
-      g_selected_count = 0;
-      g_update.dir_middle = true;
-      tb_clear();
-    } else {
-      if (g_cursor.name[0] == '\0') {
-        snprintf(g_msg, sizeof g_msg, "no file selected");
-        g_msg_type = MSG_TYPE_ERROR;
-        return 0;
-      }
-      char cwd_with_cursor[PATH_MAX];
-      const int needed = snprintf(cwd_with_cursor, PATH_MAX, "%s/%s", g_cwd, g_cursor.name);
-      if (needed < 0 || needed >= PATH_MAX) {
-        snprintf(g_msg, sizeof g_msg, "(%s snprintf) path too long", __func__);
-        g_msg_type = MSG_TYPE_ERROR;
-        return 0;
-      }
-      const char *p = cwd_with_cursor;
-      copy_yank(&p, 1, ev->ch == 'd');
-    }
-    return 0;
-  }
-  case 'D':
-    if (!g_items_in_middle_dir) {
-      return 0;
-    }
-    if (g_selected_count > 0) {
-      char msg[64];
-      snprintf(msg, sizeof msg, "%d items", g_selected_count);
-      if (nav_get_confirmation("delete ", msg)) {
-        for (int i = 0; i < g_selected_count; i++) {
-          os_exec_output(CMD_DELETE, g_selected_paths[i]);
-        }
-        g_selected_count = 0;
-        g_update.dir_middle = true;
-        g_update.dir_right = true;
-        tb_clear();
-      }
-    } else if (nav_get_confirmation("delete ", g_cursor.name)) {
-      os_exec_output(CMD_DELETE, g_cursor.name);
-      g_cursor.idx = g_cursor.idx ? g_cursor.idx - 1 : 0;
-      g_update.dir_middle = true;
-      g_update.dir_right = true;
-      tb_clear();
-    }
-    return 0;
-  case 'p':
-    if (!copy_paste(g_cwd)) {
-      return 0;
-    }
-    g_update.dir_left = true;
-    g_update.dir_middle = true;
-    g_update.dir_right = true;
-    tb_clear();
-    return 0;
-  case 'r': {
-    if (!g_items_in_middle_dir) {
-      return 0;
-    }
-    char *new_name = nav_get_prompt_input("rename: ", g_cursor.name);
-    if (new_name && new_name[0] && strcmp(new_name, g_cursor.name) != 0) {
-      char dest_path[PATH_MAX * 2];
-      snprintf(dest_path, sizeof dest_path, "%s/%s", g_cwd, new_name);
-      if (access(dest_path, F_OK) == 0) {
-        if (!nav_get_confirmation("replace ", new_name)) {
-          return 0;
-        }
-      }
-      os_move(g_cursor.name, new_name);
-      memcpy(g_cursor.name, new_name, sizeof(g_cursor.name));
-      g_update.dir_middle = true;
-      g_update.dir_right = true;
-      tb_clear();
-    }
-    tb_hide_cursor();
-    return 0;
-  }
-  case 'n':
-    if (g_search_idx_before == -1) {
-      return 0;
-    }
-    set_cursor_idx_to_search(true, g_cursor.idx + 1);
-    tb_clear();
-    return 0;
-  case 'N':
-    if (g_search_idx_before == -1) {
-      return 0;
-    }
-    set_cursor_idx_to_search(false, g_cursor.idx - 1);
-    tb_clear();
-    return 0;
-  case '/':
-  case '?': // use N to search backwards, no need to have separate logic for it
-    g_search_idx_before = g_cursor.idx;
-    nav_switch_mode(MODE_COMMAND);
-    return 0;
-  case ':':
-    g_search_idx_before = -1;
-    nav_switch_mode(MODE_COMMAND);
-    return 0;
-  case 'S':
-    tb_shutdown();
-    os_exec("$SHELL", "");
-    tb_init();
-    return 0;
-  case 'q':
-    return -1;
-  case 'f':
-  case 'F': {
-    if (!g_items_in_middle_dir)
-      return 0;
-    const int ch = nav_get_prompt_char(ev->ch == 'f' ? "find: " : "find-back: ");
-    if (ch && !set_cursor_idx_to_locate(ev->ch == 'f', g_cursor.idx + (ev->ch == 'f' ? 1 : -1), ch)) {
-      snprintf(g_msg, sizeof g_msg, "find: pattern not found: %c", ch);
-      g_msg_type = MSG_TYPE_ERROR;
-    }
-    tb_hide_cursor();
-    tb_clear();
-    return 0;
-  }
   }
 
   if (ev->ch >= '0' && ev->ch <= '9') {

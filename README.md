@@ -10,32 +10,41 @@ It supports moving/copying files between multiple instances of the program throu
 
 ## Keybinds
 
-* VI keys for navigation
-    * `h` - navigate to previous directory
-    * `j` - select next file (can be repeated by typing a number before)
-    * `k` - select previous file (can be repeated by typing a number before)
-    * `l` - navigate to next directory or open file
-    * `g` - go to top (or to a specific line by typing a number before)
-    * `G` - go to bottom
-* Regular keys for navigation
-    * `Up` - select previous file (can be repeated by typing a number before)
-    * `Down` - select next file (can be repeated by typing a number before)
-    * `Left` - navigate to previous directory
-    * `Right` - navigate to next directory or open file
-    * `Home` - go to top (or to a specific line by typing a number before)
-    * `End` - go to bottom
-    * `Page Up` or `Ctrl+U` - scroll half list up
-    * `Page Down` or `Ctrl+D` - scroll half list down
-* File/directory operations
-    * `D` - delete selected file or directory (with confirmation)
-    * `r` - rename selected file or directory
-    * `:touch abc` - create file named abc (shell)
-    * `:mkdir abc` - create directory named abc (shell)
-    * Any other shell commands prefixed with `:`
-* Toggle hidden files with `Ctrl-H`
-* Refresh directories with `Ctrl-R`
-* Open `$SHELL` in the current directory with `S`; return to the file manager with `exit`
-* Exit with `Ctrl-C`, `q`, or `:q`
+All character keybinds below are configurable in `KEY_COMMANDS[]` in [config.h](config.h).
+
+* VI navigation
+    * `h` - parent directory
+    * `j` - next file (repeatable with a number prefix, e.g. `5j`)
+    * `k` - previous file (repeatable)
+    * `l` - enter directory or open file
+    * `g` - top (or line N with number prefix)
+    * `G` - bottom
+* Regular navigation
+    * `Up` / `Down` - previous / next file
+    * `Left` / `Right` or `Enter` - parent / enter directory
+    * `Home` / `End` - top / bottom
+    * `PgUp` / `Ctrl+U` and `PgDn` / `Ctrl+D` - scroll half page
+* File operations
+    * `Space` - toggle multi-select
+    * `y` - yank (copy) selection
+    * `d` - yank (cut) selection
+    * `p` - paste yanked files
+    * `D` - delete (with confirmation)
+    * `r` - rename
+* Search
+    * `/` - search forward
+    * `?` - search backward
+    * `n` / `N` - next / previous search result
+    * `f` / `F` - find by first character forward / backward
+* Shell
+    * `:` - enter command mode (type a command and press Enter; runs via `$SHELL -c`)
+    * `S` - spawn `$SHELL` interactively; return with `exit`
+    * `ch` - `cd ~`
+    * `ct` - `cd /tmp`
+    * `cd` - `cd ~/Downloads`
+* `Ctrl+H` - toggle hidden files
+* `Ctrl+R` - refresh directories
+* `q`, `Ctrl+C`, or `:q` - exit
 
 ## Preview/open
 
@@ -66,7 +75,7 @@ For developers, there are additional commands in the [Makefile](Makefile), see `
 ## Design decisions
 
 * Follows the [suckless philosophy](https://suckless.org/philosophy/). However, unlike other official suckless software, code is separated into multiple files, there are tests and optional features can be toggled through configuration instead of requiring patches
-* Configuration is done at build time, like with other suckless software. See configuration options in [config.h](config.h). To change keybinds, set the `TB_KEY_x` macros; see [termbox2.h](https://github.com/termbox/termbox2/blob/master/termbox2.h) and [nav.c](nav.c)
+* Configuration is done at build time, like with other suckless software. See configuration options in [config.h](config.h). Character keybinds are configured through the `KEY_COMMANDS[]` array in config.h. Named-key binds (arrows, enter, etc.) use `TB_KEY_x` macros in [nav.c](nav.c).
 * No non-core features that would require adding significant extra code or complexity
 * Stateless - nothing is saved, so command history is not persistent
 * Focuses on POSIX - Linux/BSD/macOS only

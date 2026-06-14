@@ -7,6 +7,7 @@
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
 * Possible to overflow when adding to command history and if the commands are too long
 * In small window, preview output can overwrite status bar
+* When moving left to parent folder and back, it moves the cursor to the wrong item
 
 ## Features
 
@@ -25,6 +26,8 @@
 * Support running commands with fish shell, instead of falling back on bash
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format
+* List all options when pressing key1 in `config.h` keybinds, like lf. Will require multi-line support in `draw_message()`
+* Support `cd -` to go back to directory before `cd`, and add custom keybind (`-`) for it
 
 ## General improvements
 
