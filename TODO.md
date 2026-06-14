@@ -19,12 +19,10 @@
 * Show progress for copy/move
 * Handle collision with existing files when pasting after copy/move
 * Ability to write to log file what is happening while running for debugging
-* Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format
-* List all options when pressing key1 in `config.h` keybinds, like lf. Will require multi-line support in `draw_message()`
 
 ## General improvements
 * Do more partial clearings instead of full `tb_clear()`. Maybe the draw functions for each column should trigger clear if there are changes.

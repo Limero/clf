@@ -41,7 +41,7 @@ static void preview_stop_previous(void) {
 
 static bool flush_line(const int x, int *y, const int width, const char *buf, const size_t len, int *lsp) {
   tb_printf(x, *y, COLOR_DEFAULT, COLOR_DEFAULT, "%-*.*s", width, (int)len, buf);
-  if (*y == tb_height() - 2) {
+  if (*y == tb_height() - MAX(1, g_msg_line_count) - 1) {
     tb_present();
     return true;
   }
@@ -129,7 +129,8 @@ static void *preview_worker(void *arg) {
     bool stale = false;
 
     pthread_mutex_lock(&g_tb_mutex);
-    for (int cy = 1; cy < tb_height() - 1; cy++) {
+    const int preview_bottom = tb_height() - MAX(1, g_msg_line_count) - 1;
+    for (int cy = 1; cy <= preview_bottom; cy++) {
       for (int cx = preview_x; cx < tb_width(); cx++) {
         tb_set_cell(cx, cy, ' ', 0, 0);
       }

@@ -64,12 +64,34 @@ static bool nav_get_confirmation(const char *msg1, const char *msg2) {
 static int nav_get_prompt_char(const char *prompt) {
   const int y = tb_height() - 1;
   const int prompt_len = strlen(prompt);
+  int rendered_lines = 0;
+
+  pthread_mutex_lock(&g_tb_mutex);
+  if (g_msg[0] != '\0') {
+    rendered_lines = render_multiline_msg(tb_height() - 2);
+    if (rendered_lines > 1)
+      g_msg_line_count = rendered_lines;
+    g_msg[0] = '\0';
+  }
+
   clear_line(y);
   tb_print(0, y, COLOR_DEFAULT, COLOR_DEFAULT, prompt);
   tb_set_cursor(prompt_len, y);
   tb_present();
+  pthread_mutex_unlock(&g_tb_mutex);
+
   struct tb_event ev = {0};
   tb_poll_event(&ev);
+
+  if (rendered_lines > 0) {
+    pthread_mutex_lock(&g_tb_mutex);
+    for (int i = 0; i < rendered_lines; i++) {
+      clear_line(y - rendered_lines + i);
+    }
+    g_msg_line_count = 0;
+    pthread_mutex_unlock(&g_tb_mutex);
+  }
+
   return ev.ch;
 }
 
@@ -565,17 +587,31 @@ static int nav_handle_event_character_normal(const struct tb_event *ev, int *rep
   }
 
   if (has_prefix) {
+    int msg_offset = 0;
+    for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
+      if (KEY_COMMANDS[i].key1 == ev->ch && KEY_COMMANDS[i].key2 != 0) {
+        msg_offset += snprintf(g_msg + msg_offset, sizeof g_msg - msg_offset, "%c%c  %s\n", KEY_COMMANDS[i].key1,
+                               KEY_COMMANDS[i].key2, KEY_COMMANDS[i].cmd);
+      }
+    }
+    if (msg_offset > 0)
+      g_msg[msg_offset - 1] = '\0';
+    g_msg_type = MSG_TYPE_INFO;
+
     char prompt[2];
     snprintf(prompt, sizeof prompt, "%c", ev->ch);
     const int ch2 = nav_get_prompt_char(prompt);
     tb_hide_cursor();
+
     for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
       if (KEY_COMMANDS[i].key1 == ev->ch && KEY_COMMANDS[i].key2 == ch2) {
+        g_msg[0] = '\0';
         if (nav_execute_cmd(KEY_COMMANDS[i].cmd, *repeat))
           return -1;
         return 0;
       }
     }
+
     snprintf(g_msg, sizeof g_msg, "unknown mapping: %c%c", ev->ch, ch2);
     g_msg_type = MSG_TYPE_ERROR;
     return 0;

@@ -24,6 +24,7 @@ static int g_left_column_idx = 0;
 static int g_right_column_idx = 0;
 static char g_msg[4096] = "";
 static msg_type_t g_msg_type;
+static int g_msg_line_count = 0;
 
 static char *g_username;
 static int g_username_len;

@@ -9,6 +9,8 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
+static int g_msg_clear_top = -1;
+
 static int compare_dirs_first(const struct dirent **a, const struct dirent **b) {
   if ((*a)->d_type == DT_DIR && (*b)->d_type != DT_DIR) {
     return -1;
@@ -452,19 +454,63 @@ static void clear_line(const int y) {
   }
 }
 
-static void draw_message(void) {
-  clear_line(tb_height() - 1);
-  switch (g_msg_type) {
-  case MSG_TYPE_INFO:
-    tb_print(0, tb_height() - 1, COLOR_DEFAULT, COLOR_DEFAULT, g_msg);
-    break;
-  case MSG_TYPE_SUCCESS:
-    tb_print(0, tb_height() - 1, COLOR_SUCCESS_FG, COLOR_DEFAULT, g_msg);
-    break;
-  case MSG_TYPE_ERROR:
-    tb_printf(0, tb_height() - 1, COLOR_DEFAULT, COLOR_ERROR_BG, "Error: %s", g_msg);
-    break;
+// Renders g_msg as multiline text at the bottom of the screen,
+// with the last line at bottom_y. Returns number of lines rendered (0 if empty).
+static int render_multiline_msg(int bottom_y) {
+  if (g_msg[0] == '\0')
+    return 0;
+
+  int msg_len = strlen(g_msg);
+  while (msg_len > 0 && g_msg[msg_len - 1] == '\n')
+    g_msg[--msg_len] = '\0';
+  if (msg_len == 0)
+    return 0;
+
+  int line_count = 1;
+  for (int i = 0; i < msg_len; i++) {
+    if (g_msg[i] == '\n')
+      line_count++;
   }
+
+  for (int i = 0; i < line_count; i++) {
+    clear_line(bottom_y - line_count + 1 + i);
+  }
+
+  const char *start = g_msg;
+  for (int i = 0; i < line_count; i++) {
+    const char *end = strchr(start, '\n');
+    const int len = end ? (int)(end - start) : (int)strlen(start);
+    const int y = bottom_y - line_count + 1 + i;
+
+    switch (g_msg_type) {
+    case MSG_TYPE_INFO:
+      tb_printf(0, y, COLOR_DEFAULT, COLOR_DEFAULT, "%.*s", len, start);
+      break;
+    case MSG_TYPE_SUCCESS:
+      tb_printf(0, y, COLOR_SUCCESS_FG, COLOR_DEFAULT, "%.*s", len, start);
+      break;
+    case MSG_TYPE_ERROR:
+      if (i == 0) {
+        tb_printf(0, y, COLOR_DEFAULT, COLOR_ERROR_BG, "Error: %.*s", len, start);
+      } else {
+        tb_printf(0, y, COLOR_DEFAULT, COLOR_DEFAULT, "%.*s", len, start);
+      }
+      break;
+    }
+
+    start = end ? end + 1 : start + len;
+  }
+
+  return line_count;
+}
+
+static void draw_message(void) {
+  const int line_count = render_multiline_msg(tb_height() - 1);
+  if (line_count == 0)
+    return;
+  g_msg_clear_top = tb_height() - line_count;
+  if (line_count > 1)
+    g_msg_line_count = line_count;
   g_msg[0] = '\0';
 }
 
@@ -477,7 +523,7 @@ static void draw_status_normal(const int repeat) {
   char path[sizeof(g_cwd) + 1 /* slash */ + sizeof(g_cursor.name)];
   const ssize_t needed = snprintf(path, sizeof(path), "%s/%s", g_cwd, g_cursor.name);
   if (needed < 0 || (size_t)needed >= sizeof(path)) {
-    snprintf(g_msg, sizeof g_msg, "Path too long (needed %zd bytes)\n", needed + 1);
+    snprintf(g_msg, sizeof g_msg, "Path too long (needed %zd bytes)", needed + 1);
     g_msg_type = MSG_TYPE_ERROR;
     return;
   }
@@ -548,6 +594,14 @@ static void draw_status_confirmation(const char *msg1, const char *msg2) {
 }
 
 void draw_screen(const int repeat) {
+  pthread_mutex_lock(&g_tb_mutex);
+
+  if (g_msg_clear_top >= 0) {
+    for (int i = g_msg_clear_top; i < tb_height(); i++)
+      clear_line(i);
+    g_msg_clear_top = -1;
+  }
+
   const int column_width = tb_width() / 6;
   draw_left_column(column_width * 0, column_width * 1 - 1);
   draw_middle_column(column_width * 1 + 2, column_width * 2 - 2);
@@ -558,6 +612,7 @@ void draw_screen(const int repeat) {
   if (g_msg[0] != '\0') {
     draw_message();
   } else {
+    g_msg_line_count = 0;
     switch (g_current_mode) {
     case MODE_COMMAND:
       draw_status_command();
@@ -567,8 +622,6 @@ void draw_screen(const int repeat) {
       break;
     }
   }
-
-  pthread_mutex_lock(&g_tb_mutex);
   tb_present();
   pthread_mutex_unlock(&g_tb_mutex);
 }
