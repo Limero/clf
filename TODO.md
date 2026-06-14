@@ -6,6 +6,7 @@
 * With OPT_FULL_SHELL set to 0, long running commands like `:sleep 10` can't be cancelled with CTRL+C. It works with OPT_FULL_SHELL set to 1
 * Some commands, like `:vi` (not `:nvim`) will freeze the program and require fully closing the terminal
 * Possible to overflow when adding to command history and if the commands are too long
+* In small window, preview output can overwrite status bar
 
 ## Features
 
@@ -24,13 +25,16 @@
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
 * Show file name in success message after moving/copying just one file
+* 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
+* 'incsearch' config option to be able to disable the automatic cursor movement while searching
+* 'timefmt' config option to change status bar date/time format
+* Add f/F locate-commands
 
 ## General improvements
 
 * Do more partial clearings instead of full `tb_clear()`. Maybe the draw functions for each column should trigger clear if there are changes.
 * Add tests for more core functionality
 * Make os_exec_output return bool if screen should be refreshed or not to avoid flickering on commands like `:pwd`. Commands like `:touch` should still update. Probably have to check if files in directory were modified.
-* See if more of the current functionality has config options in lf
 * Add comments to all config options
 * When multi-selection is disabled, program still creates memory for the full clipboard
 * Performance config flags might have to converted to `#define` to actually be useful
