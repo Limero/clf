@@ -487,30 +487,35 @@ static const struct {
 };
 static const int BUILTIN_ACTIONS_LEN = sizeof(BUILTIN_ACTIONS) / sizeof(BUILTIN_ACTIONS[0]);
 
-static int nav_execute_cmd(const char *cmd, const int repeat) {
+// returns true if program should exit
+static bool nav_execute_cmd(const char *cmd, const int repeat) {
   if (cmd[0] == ':') {
     os_exec_output_deferred(cmd + 1, "", draw_status_running_command, OPT_CMD_INDICATOR_DELAY_MS);
     g_update.dir_left = true;
     g_update.dir_middle = true;
     g_update.dir_right = true;
     tb_clear();
-    return 1;
+    return false;
   }
   for (int j = 0; j < BUILTIN_ACTIONS_LEN; j++) {
     if (strcmp(cmd, BUILTIN_ACTIONS[j].name) == 0) {
-      const int r = BUILTIN_ACTIONS[j].fn(repeat);
-      if (r < 0)
-        return -1;
-      return 1;
+      return BUILTIN_ACTIONS[j].fn(repeat) < 0;
     }
   }
   snprintf(g_msg, sizeof g_msg, "unknown action: %s", cmd);
   g_msg_type = MSG_TYPE_ERROR;
   tb_clear();
-  return 1;
+  return false;
 }
 
-static int nav_handle_config_key(const struct tb_event *ev, const int repeat) {
+// Returns -1 = quit, 0 = command executed, reset repeat 1 = digit accumulated, don't reset repeat
+static int nav_handle_event_character_normal(const struct tb_event *ev, int *repeat) {
+  if (ev->ch >= '0' && ev->ch <= '9') {
+    if (*repeat < 1000)
+      *repeat = (*repeat * 10) + (ev->ch - '0');
+    return 1;
+  }
+
   bool has_prefix = false;
   for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
     if (KEY_COMMANDS[i].key2 != 0 && KEY_COMMANDS[i].key1 == ev->ch) {
@@ -526,36 +531,32 @@ static int nav_handle_config_key(const struct tb_event *ev, const int repeat) {
     tb_hide_cursor();
     for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
       if (KEY_COMMANDS[i].key1 == ev->ch && KEY_COMMANDS[i].key2 == ch2) {
-        const int r = nav_execute_cmd(KEY_COMMANDS[i].cmd, repeat);
-        if (r < 0)
+        if (nav_execute_cmd(KEY_COMMANDS[i].cmd, *repeat))
           return -1;
-        return 1;
+        return 0;
       }
     }
     snprintf(g_msg, sizeof g_msg, "unknown mapping: %c%c", ev->ch, ch2);
     g_msg_type = MSG_TYPE_ERROR;
-    tb_clear();
-    return 1;
+    return 0;
   }
 
   for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
     if (KEY_COMMANDS[i].key2 == 0 && ev->ch == KEY_COMMANDS[i].key1) {
-      const int r = nav_execute_cmd(KEY_COMMANDS[i].cmd, repeat);
-      if (r < 0)
+      if (nav_execute_cmd(KEY_COMMANDS[i].cmd, *repeat))
         return -1;
-      return 1;
+      return 0;
     }
   }
 
+  snprintf(g_msg, sizeof g_msg, "unknown mapping: %c", ev->ch);
+  g_msg_type = MSG_TYPE_ERROR;
   return 0;
 }
 
 static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
-  const int r = nav_handle_config_key(ev, *repeat);
-  if (r < 0)
-    return -1;
-  if (r > 0)
-    return 0;
+  if (ev->ch)
+    return nav_handle_event_character_normal(ev, repeat);
 
   switch (ev->key) {
   case TB_KEY_ARROW_UP:
@@ -572,7 +573,7 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
     nav_dir_enter();
     return 0;
   case TB_KEY_HOME:
-    nav_move_to_line(*repeat ? *repeat - 1 : 0);
+    nav_move_top();
     return 0;
   case TB_KEY_END:
     nav_move_bottom();
@@ -585,12 +586,6 @@ static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
   case TB_KEY_PGDN:
     nav_move_page_down();
     return 0;
-  }
-
-  if (ev->ch >= '0' && ev->ch <= '9') {
-    if (*repeat < 1000)
-      *repeat = (*repeat * 10) + (ev->ch - '0');
-    return 1;
   }
 
   return 0;
