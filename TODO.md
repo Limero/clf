@@ -24,7 +24,6 @@
 * Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
-* Show file name in success message after moving/copying just one file
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format
 

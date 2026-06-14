@@ -162,7 +162,15 @@ bool copy_paste(const char *target_dir_path) {
 
   if (success_count > 0) {
     const char *op = is_move ? "Moved" : "Copied";
-    snprintf(g_msg, sizeof g_msg, "%s %d/%d", op, success_count, path_count);
+    if (path_count == 1) {
+      char file_name[256];
+      const char *base = strrchr(g_clipboard_paths[0], '/');
+      base = base ? base + 1 : g_clipboard_paths[0];
+      strlcpy(file_name, base, sizeof file_name);
+      snprintf(g_msg, sizeof g_msg, "%s %s", op, file_name);
+    } else {
+      snprintf(g_msg, sizeof g_msg, "%s %d/%d", op, success_count, path_count);
+    }
     g_msg_type = MSG_TYPE_SUCCESS;
 
     const char *base = strrchr(g_clipboard_paths[0], '/');
