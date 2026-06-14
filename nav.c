@@ -5,6 +5,8 @@
 #include "draw.c"
 #include "global.h"
 
+static const int KEY_COMMANDS_LEN = sizeof(KEY_COMMANDS) / sizeof(KEY_COMMANDS[0]);
+
 static int nav_handle_input_key(const struct tb_event *ev, char *buf, int *cursor, int *len) {
   switch (ev->key) {
   case TB_KEY_ENTER:
@@ -219,7 +221,54 @@ static void nav_switch_mode(const modes_t new_mode) {
   }
 }
 
+static bool nav_handle_config_key(const struct tb_event *ev) {
+  bool has_prefix = false;
+  for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
+    if (KEY_COMMANDS[i].key2 != 0 && KEY_COMMANDS[i].key1 == ev->ch) {
+      has_prefix = true;
+      break;
+    }
+  }
+
+  if (has_prefix) {
+    char prompt[2];
+    snprintf(prompt, sizeof prompt, "%c", ev->ch);
+    const int ch2 = nav_get_prompt_char(prompt);
+    tb_hide_cursor();
+    for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
+      if (KEY_COMMANDS[i].key1 == ev->ch && KEY_COMMANDS[i].key2 == ch2) {
+        os_exec_output_deferred(KEY_COMMANDS[i].cmd, "", draw_status_running_command, OPT_CMD_INDICATOR_DELAY_MS);
+        g_update.dir_left = true;
+        g_update.dir_middle = true;
+        g_update.dir_right = true;
+        tb_clear();
+        return true;
+      }
+    }
+    snprintf(g_msg, sizeof g_msg, "unknown mapping: %c%c", ev->ch, ch2);
+    g_msg_type = MSG_TYPE_ERROR;
+    tb_clear();
+    return true;
+  }
+
+  for (int i = 0; i < KEY_COMMANDS_LEN; i++) {
+    if (KEY_COMMANDS[i].key2 == 0 && ev->ch == KEY_COMMANDS[i].key1) {
+      os_exec_output_deferred(KEY_COMMANDS[i].cmd, "", draw_status_running_command, OPT_CMD_INDICATOR_DELAY_MS);
+      g_update.dir_left = true;
+      g_update.dir_middle = true;
+      g_update.dir_right = true;
+      tb_clear();
+      return true;
+    }
+  }
+
+  return false;
+}
+
 static int nav_handle_event_normal(const struct tb_event *ev, int *repeat) {
+  if (nav_handle_config_key(ev))
+    return 0;
+
   switch (ev->key) {
   case TB_KEY_ARROW_UP:
     nav_up(*repeat ? *repeat : 1);

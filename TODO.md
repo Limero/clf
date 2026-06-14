@@ -19,7 +19,6 @@
 * Move cursor to new file/dir after commands, touch/mkdir/etc
 * Show progress for copy/move
 * Handle collision with existing files when pasting after copy/move
-* Bind commands to keys in config.h (can be used for bookmarks with cd)
 * Ability to write to log file what is happening while running for debugging
 * Support showing multiline output from running command
 * When renaming file with extension, put cursor right before extension instead of end
