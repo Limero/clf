@@ -1,5 +1,11 @@
 #pragma once
 
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 700
+#endif
+#ifndef _DEFAULT_SOURCE
+#define _DEFAULT_SOURCE
+#endif
 #include "global.h"
 #include <assert.h>
 #include <errno.h>
@@ -10,10 +16,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <termios.h>
 #include <unistd.h>
+
+static volatile sig_atomic_t sig_child_pid;
+
+static void sigint_handler(int sig) {
+  (void)sig;
+  if (sig_child_pid > 0)
+    kill(-sig_child_pid, SIGKILL);
+}
 
 static void shell_quote(const char *s, char *buf, const size_t buf_size) {
   if (buf_size == 0)
@@ -113,20 +128,25 @@ bool os_move(const char *source, const char *dest) {
   return os_run("os_move", CMD_MOVE, argv);
 }
 
-static void strip_ansi(char *s) {
-  char *src = s, *dst = s;
-  while (*src) {
-    if (*src == '\033' && *(src + 1) == '[') {
-      src += 2;
-      while (*src && !(*src >= '@' && *src <= '~'))
-        src++;
-      if (*src)
-        src++;
-    } else {
-      *dst++ = *src++;
-    }
+static int pty_open(void) {
+  int fd = posix_openpt(O_RDWR | O_NOCTTY);
+  if (fd == -1)
+    return -1;
+  if (grantpt(fd) == -1) {
+    close(fd);
+    return -1;
   }
-  *dst = '\0';
+  if (unlockpt(fd) == -1) {
+    close(fd);
+    return -1;
+  }
+  // Set raw mode to avoid \n -> \r\n conversion, echo, etc.
+  struct termios tio;
+  if (tcgetattr(fd, &tio) == 0) {
+    cfmakeraw(&tio);
+    tcsetattr(fd, TCSANOW, &tio);
+  }
+  return fd;
 }
 
 static void popen_cleanup(const int *stdinpipe, const int *stdoutpipe, const bool has_term,
@@ -195,23 +215,38 @@ static int os_popen_full_shell(const char *cmd, char *buf, const size_t buf_size
   }
 
   struct sigaction sa_old[3];
-  struct sigaction sa_ignore;
-  memset(&sa_ignore, 0, sizeof sa_ignore);
-  sa_ignore.sa_handler = SIG_IGN;
-  sigemptyset(&sa_ignore.sa_mask);
-  sigaction(SIGINT, &sa_ignore, &sa_old[0]);
-  sigaction(SIGQUIT, &sa_ignore, &sa_old[1]);
-  sigaction(SIGPIPE, &sa_ignore, &sa_old[2]);
+  struct sigaction sa_new;
+  memset(&sa_new, 0, sizeof sa_new);
+  sigemptyset(&sa_new.sa_mask);
+  sa_new.sa_handler = sigint_handler;
+  sigaction(SIGINT, &sa_new, &sa_old[0]);
+  sa_new.sa_handler = SIG_IGN;
+  sigaction(SIGQUIT, &sa_new, &sa_old[1]);
+  sigaction(SIGPIPE, &sa_new, &sa_old[2]);
 
   int stdinpipe[2] = {-1, -1};
   int stdoutpipe[2] = {-1, -1};
-  if (pipe(stdinpipe) == -1 || pipe(stdoutpipe) == -1) {
+  int ptm_fd = -1;
+
+  ptm_fd = pty_open();
+  if (ptm_fd == -1 && pipe(stdoutpipe) == -1) {
+    popen_cleanup(stdinpipe, stdoutpipe, has_term, &saved_tios, sa_old);
+    return -1;
+  }
+
+  if (pipe(stdinpipe) == -1) {
+    if (ptm_fd != -1)
+      close(ptm_fd);
     popen_cleanup(stdinpipe, stdoutpipe, has_term, &saved_tios, sa_old);
     return -1;
   }
 
   const pid_t pid = fork();
+  if (pid > 0)
+    sig_child_pid = pid;
   if (pid == -1) {
+    if (ptm_fd != -1)
+      close(ptm_fd);
     popen_cleanup(stdinpipe, stdoutpipe, has_term, &saved_tios, sa_old);
     return -1;
   }
@@ -223,53 +258,89 @@ static int os_popen_full_shell(const char *cmd, char *buf, const size_t buf_size
     close(stdinpipe[1]);
     dup2(stdinpipe[0], STDIN_FILENO);
     close(stdinpipe[0]);
-    close(stdoutpipe[0]);
-    dup2(stdoutpipe[1], STDOUT_FILENO);
-    close(stdoutpipe[1]);
+    if (ptm_fd != -1) {
+      const char *pts_name = ptsname(ptm_fd);
+      if (!pts_name)
+        _exit(127);
+      int pts_fd = open(pts_name, O_RDWR | O_NOCTTY);
+      if (pts_fd == -1)
+        _exit(127);
+      close(ptm_fd);
+      close(stdoutpipe[0]);
+      close(stdoutpipe[1]);
+      setsid();
+      ioctl(pts_fd, TIOCSCTTY, 0);
+      dup2(pts_fd, STDOUT_FILENO);
+      dup2(pts_fd, STDERR_FILENO);
+      close(pts_fd);
+    } else {
+      setpgid(0, 0);
+      close(stdoutpipe[0]);
+      dup2(stdoutpipe[1], STDOUT_FILENO);
+      close(stdoutpipe[1]);
+    }
     execlp(shell, shell, "-c", source_cmd, (char *)NULL);
     _exit(127);
   }
 
   close(stdinpipe[0]);
-  close(stdoutpipe[1]);
+  if (ptm_fd != -1) {
+    close(stdoutpipe[0]);
+    close(stdoutpipe[1]);
+  } else {
+    close(stdoutpipe[1]);
+  }
 
-  static const char hook_suppress[] = "PROMPT_COMMAND=; precmd() { :; }; preexec() { :; }; chpwd() { :; }; ";
+  static const char hook_suppress[] = "PROMPT_COMMAND=; precmd() { :; }; preexec() { :; }; chpwd() { :; }; "
+                                      "export PAGER=cat GIT_PAGER=cat SYSTEMD_PAGER=cat; ";
   write(stdinpipe[1], hook_suppress, sizeof hook_suppress - 1);
   write(stdinpipe[1], cmd, strlen(cmd));
   close(stdinpipe[1]);
 
+  const int read_fd = ptm_fd != -1 ? ptm_fd : stdoutpipe[0];
   size_t total = 0;
   ssize_t n;
   bool indicator_shown = false;
-  struct pollfd pfd = {.fd = stdoutpipe[0], .events = POLLIN};
+  struct pollfd pfd = {.fd = read_fd, .events = POLLIN};
 
   while (total + 1 < buf_size) {
     int timeout = (indicator_shown || indicator_cb == NULL) ? -1 : threshold_ms;
     int pret = poll(&pfd, 1, timeout);
 
     if (pret > 0) {
-      n = read(stdoutpipe[0], buf + total, buf_size - total - 1);
+      n = read(read_fd, buf + total, buf_size - total - 1);
+      if (n == -1 && errno == EIO)
+        break;
       if (n <= 0)
         break;
-      total += n;
+      ssize_t wp = total;
+      for (ssize_t i = 0; i < n; i++)
+        if (buf[total + i] != '\r')
+          buf[wp++] = buf[total + i];
+      total = wp;
+      buf[total] = '\0';
     } else if (pret == 0) {
       indicator_cb();
       indicator_shown = true;
+    } else if (errno == EINTR) {
+      break;
     } else {
       break;
     }
   }
 
+  sig_child_pid = 0;
+
   {
     char drain[4096];
-    while ((n = read(stdoutpipe[0], drain, sizeof(drain))) > 0)
+    while ((n = read(read_fd, drain, sizeof(drain))) > 0)
       ;
   }
 
   if (total > 0 && buf[total - 1] == '\n')
     total--;
   buf[total] = '\0';
-  close(stdoutpipe[0]);
+  close(read_fd);
 
   int child_status;
   pid_t ret;
@@ -327,7 +398,6 @@ void os_exec_output_deferred(const char *c, const char *arg, void (*indicator_cb
       g_msg_type = MSG_TYPE_ERROR;
       return;
     }
-    strip_ansi(g_msg);
   } else {
     FILE *fp = popen(cmd, "r");
     if (!fp) {

@@ -106,10 +106,10 @@ static void test_os_popen_full_shell_chdir(void) {
   test_assert_string_contains(g_cwd, "/tmp");
 }
 
-static void test_os_popen_full_shell_ansi_strip(void) {
-  // ANSI escape sequences should be stripped from output
+static void test_os_popen_full_shell_ansi_preserved(void) {
+  // ANSI escape sequences should be preserved in output
   os_exec_output("printf '\\033[31mred\\033[0m'", "");
-  assert_string_equal(g_msg, "red");
+  assert_string_equal(g_msg, "\033[31mred\033[0m");
 }
 
 static void test_os_exec_spaces(void) {
@@ -145,7 +145,7 @@ Test os_tests[] = {
     {"/popen_full_shell_basic", test_os_popen_full_shell_basic},
     {"/popen_full_shell_signal_handlers", test_os_popen_full_shell_signal_handlers},
     {"/popen_full_shell_chdir", test_os_popen_full_shell_chdir},
-    {"/popen_full_shell_ansi_strip", test_os_popen_full_shell_ansi_strip},
+    {"/popen_full_shell_ansi_preserved", test_os_popen_full_shell_ansi_preserved},
     {"/exec_spaces", test_os_exec_spaces},
     {"/exec_output_spaces", test_os_exec_output_spaces},
 

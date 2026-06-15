@@ -1,6 +1,6 @@
 CC = cc
 CFLAGS = -std=c99 -Wall -Werror -Wextra -pedantic -Wno-unused-parameter -g -O0
-DEFINES = -D_XOPEN_SOURCE -D_DEFAULT_SOURCE
+DEFINES = -D_XOPEN_SOURCE=700 -D_DEFAULT_SOURCE
 
 TARGET = clf
 SOURCES = main.c

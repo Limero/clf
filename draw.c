@@ -7,7 +7,17 @@
 #include <assert.h>
 #include <ctype.h>
 #include <dirent.h>
+#include <string.h>
 #include <sys/stat.h>
+
+// Count number of UTF-8 code points (display cells) in the first len bytes
+static int utf8_cell_count(const char *s, const int len) {
+  int count = 0;
+  for (int i = 0; i < len; i++)
+    if (((unsigned char)s[i] & 0xC0) != 0x80) // skip continuation bytes
+      count++;
+  return count;
+}
 
 static int g_msg_clear_top = -1;
 
@@ -491,25 +501,81 @@ static int render_multiline_msg(int bottom_y) {
   }
 
   const char *start = g_msg;
+  ansi_state_t state;
+
   for (int i = 0; i < display_lines; i++) {
     const char *end = strchr(start, '\n');
     const int len = end ? (int)(end - start) : (int)strlen(start);
     const int y = bottom_y - display_lines + 1 + i;
 
-    switch (g_msg_type) {
-    case MSG_TYPE_INFO:
-      tb_printf(0, y, COLOR_DEFAULT, COLOR_DEFAULT, "%.*s", len, start);
-      break;
-    case MSG_TYPE_SUCCESS:
-      tb_printf(0, y, COLOR_SUCCESS_FG, COLOR_DEFAULT, "%.*s", len, start);
-      break;
-    case MSG_TYPE_ERROR:
-      if (i == 0) {
-        tb_printf(0, y, COLOR_DEFAULT, COLOR_ERROR_BG, "Error: %.*s", len, start);
-      } else {
-        tb_printf(0, y, COLOR_DEFAULT, COLOR_DEFAULT, "%.*s", len, start);
+    int x = 0;
+
+    // Reset state at start of message; persist across lines within it.
+    if (i == 0) {
+      ansi_state_reset(&state);
+      if (g_msg_type == MSG_TYPE_SUCCESS)
+        state.fg = COLOR_SUCCESS_FG;
+      else if (g_msg_type == MSG_TYPE_ERROR)
+        state.bg = COLOR_ERROR_BG;
+    }
+
+    // MSG_TYPE_ERROR: render "Error: " prefix with error background
+    if (g_msg_type == MSG_TYPE_ERROR && i == 0) {
+      tb_printf(0, y, COLOR_DEFAULT, COLOR_ERROR_BG, "Error: ");
+      x = 7;
+    }
+
+    // ANSI-aware rendering of this line
+    const char *p = start;
+    const char *line_end = start + len;
+
+    while (p < line_end) {
+      // Skip any escape sequence: CSI (\033[) or non-CSI (\033X).
+      if (*p == '\033') {
+        if (p + 1 < line_end && *(p + 1) == '[') {
+          p = ansi_parse_csi(p, &state);
+        } else if (p + 1 < line_end &&
+                   (*(p + 1) == ']' || *(p + 1) == 'P' || *(p + 1) == 'X' || *(p + 1) == '^' || *(p + 1) == '_')) {
+          // OSC/DCS/SOS/PM/APC: terminated by BEL (\a) or ST (\033\\)
+          p += 2;
+          while (p < line_end && *p != '\033' && *p != '\a')
+            p++;
+          if (p < line_end && *p == '\a')
+            p++;
+          else if (p < line_end && *p == '\033')
+            p += 2;
+        } else {
+          p += 2; // simple non-CSI escape (\033c, \0337, etc.)
+        }
+        continue;
       }
-      break;
+
+      const char *seg_start = p;
+      while (p < line_end && *p != '\033')
+        p++;
+
+      const int seg_len = (int)(p - seg_start);
+      if (seg_len > 0 && x < tb_width()) {
+        const char *seg = seg_start;
+        const char *seg_end = seg_start + seg_len;
+        while (seg < seg_end && x < tb_width()) {
+          const char *tab = memchr(seg, '\t', seg_end - seg);
+          const int n = tab ? (int)(tab - seg) : (int)(seg_end - seg);
+
+          if (n > 0) {
+            tb_printf(x, y, state.fg, state.bg, "%.*s", n, seg);
+            x += utf8_cell_count(seg, n);
+          }
+          seg += n;
+
+          if (tab) {
+            const int stop = MIN(((x + 8) / 8) * 8, tb_width());
+            for (; x < stop; x++)
+              tb_set_cell(x, y, ' ', state.fg, state.bg);
+            ++seg;
+          }
+        }
+      }
     }
 
     start = end ? end + 1 : start + len;
