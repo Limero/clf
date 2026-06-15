@@ -260,6 +260,12 @@ static int os_popen_full_shell(const char *cmd, char *buf, const size_t buf_size
     }
   }
 
+  {
+    char drain[4096];
+    while ((n = read(stdoutpipe[0], drain, sizeof(drain))) > 0)
+      ;
+  }
+
   if (total > 0 && buf[total - 1] == '\n')
     total--;
   buf[total] = '\0';

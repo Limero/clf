@@ -2,6 +2,7 @@
 
 #include "complete_test.c"
 #include "copy_test.c"
+#include "draw_test.c"
 #include "nav_test.c"
 #include "os_test.c"
 
@@ -43,7 +44,8 @@ Test main_tests[] = {
 };
 
 Suite test_suites[] = {
-    {"main", main_tests}, {"complete", complete_tests}, {"copy", copy_tests}, {"nav", nav_tests}, {"os", os_tests},
+    {"main", main_tests}, {"complete", complete_tests}, {"copy", copy_tests},
+    {"draw", draw_tests}, {"nav", nav_tests},           {"os", os_tests},
     {NULL, NULL},
 };
 

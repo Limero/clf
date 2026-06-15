@@ -40,11 +40,9 @@ static void preview_stop_previous(void) {
 }
 
 static bool flush_line(const int x, int *y, const int width, const char *buf, const size_t len, int *lsp) {
-  tb_printf(x, *y, COLOR_DEFAULT, COLOR_DEFAULT, "%-*.*s", width, (int)len, buf);
-  if (*y == tb_height() - MAX(1, g_msg_line_count) - 1) {
-    tb_present();
+  if (*y >= tb_height() - MAX(1, g_msg_line_count) - 1)
     return true;
-  }
+  tb_printf(x, *y, COLOR_DEFAULT, COLOR_DEFAULT, "%-*.*s", width, (int)len, buf);
   (*y)++;
   (*lsp)++;
   if (*lsp >= 3 || *y == 2) {

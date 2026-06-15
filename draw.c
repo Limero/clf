@@ -367,7 +367,8 @@ static void draw_right_column(const int offset_x, const int width) {
       g_items_in_right_dir = 0;
       switch (errno) {
       case ENOTDIR:
-        preview_start(offset_x, g_cursor.name);
+        if (g_current_mode != MODE_COMMAND)
+          preview_start(offset_x, g_cursor.name);
         return;
       case ENOENT:
         return;
@@ -394,8 +395,12 @@ static void draw_right_column(const int offset_x, const int width) {
 
   if (g_items_in_right_dir == 0) {
     struct stat st;
-    if (lstat(g_cursor.name, &st) == 0 && S_ISDIR(st.st_mode)) {
-      tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
+    if (lstat(g_cursor.name, &st) == 0) {
+      if (S_ISDIR(st.st_mode)) {
+        tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
+      } else if (g_current_mode != MODE_COMMAND) {
+        preview_start(offset_x, g_cursor.name);
+      }
     }
     return;
   }
@@ -454,33 +459,42 @@ static void clear_line(const int y) {
   }
 }
 
-// Renders g_msg as multiline text at the bottom of the screen,
-// with the last line at bottom_y. Returns number of lines rendered (0 if empty).
-static int render_multiline_msg(int bottom_y) {
+static int count_msg_lines(void) {
   if (g_msg[0] == '\0')
     return 0;
 
   int msg_len = strlen(g_msg);
   while (msg_len > 0 && g_msg[msg_len - 1] == '\n')
-    g_msg[--msg_len] = '\0';
+    msg_len--;
   if (msg_len == 0)
     return 0;
 
-  int line_count = 1;
+  int count = 1;
   for (int i = 0; i < msg_len; i++) {
     if (g_msg[i] == '\n')
-      line_count++;
+      count++;
   }
+  return count;
+}
 
-  for (int i = 0; i < line_count; i++) {
-    clear_line(bottom_y - line_count + 1 + i);
+// Renders g_msg as multiline text at the bottom of the screen,
+// with the last line at bottom_y. Returns number of lines rendered (0 if empty).
+static int render_multiline_msg(int bottom_y) {
+  const int line_count = count_msg_lines();
+  if (line_count == 0)
+    return 0;
+
+  const int display_lines = MIN(line_count, bottom_y);
+
+  for (int i = 0; i < display_lines; i++) {
+    clear_line(bottom_y - display_lines + 1 + i);
   }
 
   const char *start = g_msg;
-  for (int i = 0; i < line_count; i++) {
+  for (int i = 0; i < display_lines; i++) {
     const char *end = strchr(start, '\n');
     const int len = end ? (int)(end - start) : (int)strlen(start);
-    const int y = bottom_y - line_count + 1 + i;
+    const int y = bottom_y - display_lines + 1 + i;
 
     switch (g_msg_type) {
     case MSG_TYPE_INFO:
@@ -501,7 +515,7 @@ static int render_multiline_msg(int bottom_y) {
     start = end ? end + 1 : start + len;
   }
 
-  return line_count;
+  return display_lines;
 }
 
 static void draw_message(void) {
@@ -509,8 +523,6 @@ static void draw_message(void) {
   if (line_count == 0)
     return;
   g_msg_clear_top = tb_height() - line_count;
-  if (line_count > 1)
-    g_msg_line_count = line_count;
   g_msg[0] = '\0';
 }
 
@@ -601,6 +613,8 @@ void draw_screen(const int repeat) {
       clear_line(i);
     g_msg_clear_top = -1;
   }
+
+  g_msg_line_count = MIN(count_msg_lines(), tb_height() - 1);
 
   const int column_width = tb_width() / 6;
   draw_left_column(column_width * 0, column_width * 1 - 1);
