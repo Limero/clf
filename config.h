@@ -84,8 +84,8 @@ const unsigned int OPT_CMD_INDICATOR_DELAY_MS = 80;
 
 // -- The options below have a performance impact, disable for a minimal build --
 
-// Run commands in $SHELL with rc files sourced instead of /bin/sh
-// Allows the use of aliases, but has a small performance impact
+// Run commands in $SHELL with rc files sourced (aliases available, slightly slower startup)
+// Set to 0 to use /bin/sh directly (faster, no aliases)
 const unsigned int OPT_FULL_SHELL = 1;
 
 // Enable tab completion for commands in command mode (PATH executables + shell aliases)

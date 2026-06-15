@@ -180,29 +180,36 @@ static bool build_cmd(char *cmd, const size_t cmd_size, const char *c, const cha
 
 static int os_popen_full_shell(const char *cmd, char *buf, const size_t buf_size, void (*indicator_cb)(void),
                                const int threshold_ms) {
-  const char *shell = getenv("SHELL");
-  if (!shell)
-    shell = "sh";
-
-  const char *name = strrchr(shell, '/');
-  name = name ? name + 1 : shell;
-  const char *const source_cmd_bash = "shopt -s expand_aliases 2>/dev/null; "
-                                      ". \"$HOME/.bashrc\" >/dev/null 2>&1; "
-                                      ". /dev/stdin";
-  const char *const source_cmd_zsh = ". \"$HOME/.zshrc\" >/dev/null 2>&1; "
-                                     ". /dev/stdin";
   const char *const source_cmd_default = ". /dev/stdin";
 
+  const char *shell;
   const char *source_cmd;
-  if (strcmp(name, "zsh") == 0) {
-    source_cmd = source_cmd_zsh;
-  } else if (strcmp(name, "bash") == 0) {
-    source_cmd = source_cmd_bash;
-  } else if (strcmp(name, "fish") == 0) {
-    // TODO: Support fish directly instead of falling back on bash
-    shell = "/bin/bash";
-    source_cmd = source_cmd_bash;
+  if (OPT_FULL_SHELL) {
+    shell = getenv("SHELL");
+    if (!shell)
+      shell = "sh";
+
+    const char *name = strrchr(shell, '/');
+    name = name ? name + 1 : shell;
+    const char *const source_cmd_bash = "shopt -s expand_aliases 2>/dev/null; "
+                                        ". \"$HOME/.bashrc\" >/dev/null 2>&1; "
+                                        ". /dev/stdin";
+    const char *const source_cmd_zsh = ". \"$HOME/.zshrc\" >/dev/null 2>&1; "
+                                       ". /dev/stdin";
+
+    if (strcmp(name, "zsh") == 0) {
+      source_cmd = source_cmd_zsh;
+    } else if (strcmp(name, "bash") == 0) {
+      source_cmd = source_cmd_bash;
+    } else if (strcmp(name, "fish") == 0) {
+      // TODO: Support fish directly instead of falling back on bash
+      shell = "/bin/bash";
+      source_cmd = source_cmd_bash;
+    } else {
+      source_cmd = source_cmd_default;
+    }
   } else {
+    shell = "sh";
     source_cmd = source_cmd_default;
   }
 
@@ -390,57 +397,11 @@ void os_exec_output_deferred(const char *c, const char *arg, void (*indicator_cb
     return;
   }
 
-  int status;
-  if (OPT_FULL_SHELL) {
-    status = os_popen_full_shell(cmd, g_msg, sizeof g_msg, indicator_cb, threshold_ms);
-    if (status == -1) {
-      snprintf(g_msg, sizeof g_msg, "(%s) failed to run command", __func__);
-      g_msg_type = MSG_TYPE_ERROR;
-      return;
-    }
-  } else {
-    FILE *fp = popen(cmd, "r");
-    if (!fp) {
-      snprintf(g_msg, sizeof g_msg, "(%s popen) failed to run command", __func__);
-      g_msg_type = MSG_TYPE_ERROR;
-      return;
-    }
-
-    const size_t msg_len = sizeof(g_msg);
-    size_t total = 0;
-    bool indicator_shown = false;
-    int fd = fileno(fp);
-    struct pollfd pfd = {.fd = fd, .events = POLLIN};
-
-    while (total + 1 < msg_len) {
-      int timeout = (indicator_shown || indicator_cb == NULL) ? -1 : threshold_ms;
-      int pret = poll(&pfd, 1, timeout);
-
-      if (pret > 0) {
-        size_t n = fread(g_msg + total, 1, msg_len - total - 1, fp);
-        if (n == 0) {
-          if (ferror(fp)) {
-            if (pclose(fp) == -1) {
-              snprintf(g_msg, sizeof g_msg, "(%s pclose) %s", __func__, strerror(errno));
-              g_msg_type = MSG_TYPE_ERROR;
-            }
-            return;
-          }
-          break;
-        }
-        total += n;
-      } else if (pret == 0) {
-        indicator_cb();
-        indicator_shown = true;
-      } else {
-        break;
-      }
-    }
-    if (total > 0 && g_msg[total - 1] == '\n')
-      total--;
-    g_msg[total] = '\0';
-
-    status = pclose(fp);
+  const int status = os_popen_full_shell(cmd, g_msg, sizeof g_msg, indicator_cb, threshold_ms);
+  if (status == -1) {
+    snprintf(g_msg, sizeof g_msg, "(%s) failed to run command", __func__);
+    g_msg_type = MSG_TYPE_ERROR;
+    return;
   }
 
   if (status == 0) {
