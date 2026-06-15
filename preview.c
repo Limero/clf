@@ -39,17 +39,75 @@ static void preview_stop_previous(void) {
   }
 }
 
-static bool flush_line(const int x, int *y, const int width, const char *buf, const size_t len, int *lsp) {
-  if (*y >= tb_height() - MAX(1, g_msg_line_count) - 1)
-    return true;
-  tb_printf(x, *y, COLOR_DEFAULT, COLOR_DEFAULT, "%-*.*s", width, (int)len, buf);
-  (*y)++;
-  (*lsp)++;
-  if (*lsp >= 3 || *y == 2) {
-    tb_present();
-    *lsp = 0;
+static void render_ansi_line(const int preview_x, const int preview_width, const int preview_bottom, const char *buf,
+                             const size_t len, int *y, int *lsp, bool *truncated, ansi_state_t *state) {
+  const char *p = buf;
+  const char *end = buf + len;
+  int x = 0;
+
+  while (p < end && !*truncated) {
+    if (*p == '\033') {
+      p = ansi_skip_escape(p, end, state);
+      continue;
+    }
+
+    if (*p == '\t') {
+      x = ansi_expand_tab(preview_x + x, *y, preview_x + preview_width, (int)TAB_WIDTH, state->fg, state->bg) -
+          preview_x;
+      p++;
+      continue;
+    }
+
+    const char *seg_start = p;
+    p = ansi_find_seg_end(p, end);
+
+    const int seg_bytes = (int)(p - seg_start);
+    const int seg_chars = utf8_cell_count(seg_start, seg_bytes);
+    if (seg_chars > 0) {
+      const char *src = seg_start;
+      int remaining = seg_chars;
+
+      while (remaining > 0) {
+        const int space = preview_width - x;
+        if (space == 0) {
+          (*y)++;
+          x = 0;
+          (*lsp)++;
+          if (*lsp >= 3 || *y == 2) {
+            tb_present();
+            *lsp = 0;
+          }
+          if (*y >= preview_bottom) {
+            *truncated = true;
+            return;
+          }
+        }
+
+        const int take = MIN(remaining, space);
+        const char *chunk_end = src;
+        for (int i = 0; i < take; i++)
+          chunk_end += tb_utf8_char_length(*chunk_end);
+        const int chunk_bytes = (int)(chunk_end - src);
+
+        tb_printf(preview_x + x, *y, state->fg, state->bg, "%.*s", chunk_bytes, src);
+        x += take;
+        remaining -= take;
+        src = chunk_end;
+      }
+    }
   }
-  return false;
+
+  if (!*truncated) {
+    (*y)++;
+    (*lsp)++;
+    if (*lsp >= 3 || *y == 2) {
+      tb_present();
+      *lsp = 0;
+    }
+    if (*y >= preview_bottom) {
+      *truncated = true;
+    }
+  }
 }
 
 static void *preview_worker(void *arg) {
@@ -113,7 +171,7 @@ static void *preview_worker(void *arg) {
       continue;
     }
 
-    const size_t line_cap = (size_t)preview_width + 1;
+    const size_t line_cap = (size_t)MAX((int)preview_width * 8 + 128, 4096);
     char *line_buf = malloc(line_cap);
     if (!line_buf) {
       free(read_buf);
@@ -121,10 +179,13 @@ static void *preview_worker(void *arg) {
       continue;
     }
     size_t line_len = 0;
+
     int y = 1;
     bool truncated = false;
     int lsp = 0;
     bool stale = false;
+    ansi_state_t ansi_state;
+    ansi_state_reset(&ansi_state);
 
     pthread_mutex_lock(&g_tb_mutex);
     const int preview_bottom = tb_height() - MAX(1, g_msg_line_count) - 1;
@@ -153,51 +214,29 @@ static void *preview_worker(void *arg) {
           ssize_t n = read(pipefd[0], read_buf, read_cap);
           if (n > 0) {
             for (ssize_t i = 0; i < n; i++) {
-              char ch = read_buf[i];
+              unsigned char ch = (unsigned char)read_buf[i];
+
               if (ch == '\n') {
+                line_buf[line_len] = '\0';
                 pthread_mutex_lock(&g_tb_mutex);
-                if (line_len == 0) {
-                  truncated = flush_line(preview_x, &y, preview_width, "", 0, &lsp);
-                } else {
-                  size_t start = 0;
-                  while (start < line_len) {
-                    size_t chunk = MIN((size_t)preview_width, line_len - start);
-                    truncated = flush_line(preview_x, &y, preview_width, line_buf + start, chunk, &lsp);
-                    if (truncated)
-                      break;
-                    start += chunk;
-                  }
-                }
+                render_ansi_line(preview_x, preview_width, preview_bottom, line_buf, line_len, &y, &lsp, &truncated,
+                                 &ansi_state);
                 line_len = 0;
                 pthread_mutex_unlock(&g_tb_mutex);
                 if (truncated)
                   goto cleanup;
-              } else if (ch == '\t') {
-                size_t spaces = TAB_WIDTH - (line_len % TAB_WIDTH);
-                while (spaces > 0 && line_len < (size_t)preview_width) {
-                  line_buf[line_len++] = ' ';
-                  spaces--;
-                }
-                if (line_len >= (size_t)preview_width) {
-                  pthread_mutex_lock(&g_tb_mutex);
-                  truncated = flush_line(preview_x, &y, preview_width, line_buf, preview_width, &lsp);
-                  pthread_mutex_unlock(&g_tb_mutex);
-                  line_len = 0;
-                  if (truncated)
-                    goto cleanup;
-                }
               } else {
-                if (line_len < (size_t)preview_width) {
-                  line_buf[line_len++] = ch;
-                } else {
+                if (line_len >= line_cap - 1) {
+                  line_buf[line_len] = '\0';
                   pthread_mutex_lock(&g_tb_mutex);
-                  truncated = flush_line(preview_x, &y, preview_width, line_buf, preview_width, &lsp);
-                  pthread_mutex_unlock(&g_tb_mutex);
+                  render_ansi_line(preview_x, preview_width, preview_bottom, line_buf, line_len, &y, &lsp, &truncated,
+                                   &ansi_state);
                   line_len = 0;
-                  line_buf[line_len++] = ch;
+                  pthread_mutex_unlock(&g_tb_mutex);
                   if (truncated)
                     goto cleanup;
                 }
+                line_buf[line_len++] = ch;
               }
             }
           } else if (n == 0) {
@@ -223,14 +262,9 @@ static void *preview_worker(void *arg) {
   cleanup:
     pthread_mutex_lock(&g_tb_mutex);
     if (!stale && !truncated && line_len > 0) {
-      size_t start = 0;
-      while (start < line_len) {
-        size_t chunk = MIN((size_t)preview_width, line_len - start);
-        truncated = flush_line(preview_x, &y, preview_width, line_buf + start, chunk, &lsp);
-        if (truncated)
-          break;
-        start += chunk;
-      }
+      line_buf[line_len] = '\0';
+      render_ansi_line(preview_x, preview_width, preview_bottom, line_buf, line_len, &y, &lsp, &truncated, &ansi_state);
+      line_len = 0;
     }
     if (lsp > 0) {
       tb_present();

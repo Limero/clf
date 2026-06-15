@@ -23,8 +23,8 @@
 * 'timefmt' config option to change status bar date/time format
 * Consider implementing scrollable pager for long command output instead of capping it
 * Show command output while its running, not just on finish
-* Support colors in preview
 * Investigate supporting image previews
+* Support truecolor in preview and command output for programs like `bat` (set TB_OPT_ATTR_W)
 
 ## General improvements
 * Do more partial clearings instead of full `tb_clear()`. Maybe the draw functions for each column should trigger clear if there are changes.

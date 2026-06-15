@@ -10,15 +10,6 @@
 #include <string.h>
 #include <sys/stat.h>
 
-// Count number of UTF-8 code points (display cells) in the first len bytes
-static int utf8_cell_count(const char *s, const int len) {
-  int count = 0;
-  for (int i = 0; i < len; i++)
-    if (((unsigned char)s[i] & 0xC0) != 0x80) // skip continuation bytes
-      count++;
-  return count;
-}
-
 static int g_msg_clear_top = -1;
 
 static int compare_dirs_first(const struct dirent **a, const struct dirent **b) {
@@ -530,51 +521,33 @@ static int render_multiline_msg(int bottom_y) {
     const char *line_end = start + len;
 
     while (p < line_end) {
-      // Skip any escape sequence: CSI (\033[) or non-CSI (\033X).
       if (*p == '\033') {
-        if (p + 1 < line_end && *(p + 1) == '[') {
-          p = ansi_parse_csi(p, &state);
-        } else if (p + 1 < line_end &&
-                   (*(p + 1) == ']' || *(p + 1) == 'P' || *(p + 1) == 'X' || *(p + 1) == '^' || *(p + 1) == '_')) {
-          // OSC/DCS/SOS/PM/APC: terminated by BEL (\a) or ST (\033\\)
-          p += 2;
-          while (p < line_end && *p != '\033' && *p != '\a')
-            p++;
-          if (p < line_end && *p == '\a')
-            p++;
-          else if (p < line_end && *p == '\033')
-            p += 2;
-        } else {
-          p += 2; // simple non-CSI escape (\033c, \0337, etc.)
-        }
+        p = ansi_skip_escape(p, line_end, &state);
+        continue;
+      }
+
+      if (*p == '\t') {
+        x = ansi_expand_tab(x, y, tb_width(), 8, state.fg, state.bg);
+        p++;
         continue;
       }
 
       const char *seg_start = p;
-      while (p < line_end && *p != '\033')
-        p++;
+      p = ansi_find_seg_end(p, line_end);
 
       const int seg_len = (int)(p - seg_start);
       if (seg_len > 0 && x < tb_width()) {
-        const char *seg = seg_start;
-        const char *seg_end = seg_start + seg_len;
-        while (seg < seg_end && x < tb_width()) {
-          const char *tab = memchr(seg, '\t', seg_end - seg);
-          const int n = tab ? (int)(tab - seg) : (int)(seg_end - seg);
+        const int seg_chars = utf8_cell_count(seg_start, seg_len);
+        const int avail = tb_width() - x;
+        const int take = MIN(seg_chars, avail);
 
-          if (n > 0) {
-            tb_printf(x, y, state.fg, state.bg, "%.*s", n, seg);
-            x += utf8_cell_count(seg, n);
-          }
-          seg += n;
+        const char *render_end = seg_start;
+        for (int j = 0; j < take; j++)
+          render_end += tb_utf8_char_length(*render_end);
+        const int byte_len = (int)(render_end - seg_start);
 
-          if (tab) {
-            const int stop = MIN(((x + 8) / 8) * 8, tb_width());
-            for (; x < stop; x++)
-              tb_set_cell(x, y, ' ', state.fg, state.bg);
-            ++seg;
-          }
-        }
+        tb_printf(x, y, state.fg, state.bg, "%.*s", byte_len, seg_start);
+        x += take;
       }
     }
 

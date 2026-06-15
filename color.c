@@ -199,3 +199,60 @@ static const char *ansi_parse_csi(const char *s, ansi_state_t *state) {
   assert(!"unreachable");
   return s;
 }
+
+// Count number of UTF-8 code points in the first len bytes
+static int utf8_cell_count(const char *s, const int len) {
+  int count = 0;
+  for (int i = 0; i < len; i++)
+    if (((unsigned char)s[i] & 0xC0) != 0x80)
+      count++;
+  return count;
+}
+
+// Skips any ANSI escape sequence starting at p (must point to '\033').
+// Updates ANSI state for SGR sequences via ansi_parse_csi.
+// Handles CSI, OSC/DCS/SOS/PM/APC, and simple escape sequences.
+// Returns pointer to first byte after the escape sequence.
+static const char *ansi_skip_escape(const char *p, const char *end, ansi_state_t *state) {
+  if (*p != '\033')
+    return p;
+  if (p + 1 >= end)
+    return p + 1;
+  const char c = *(p + 1);
+  if (c == '[') {
+    return ansi_parse_csi(p, state);
+  }
+  if (c == ']' || c == 'P' || c == 'X' || c == '^' || c == '_') {
+    p += 2;
+    while (p < end && *p != '\033' && *p != '\a')
+      p++;
+    if (p < end && *p == '\a')
+      p++;
+    else if (p < end && *p == '\033')
+      p += 2;
+    return p;
+  }
+  return p + 2;
+}
+
+// Expands a tab at position x to the next tab stop.
+// Writes spaces with given fg/bg to termbox.
+// Returns the new x position after expansion.
+static inline int ansi_expand_tab(const int x, const int y, const int max_x, const int tab_width, const uint16_t fg,
+                                  const uint16_t bg) {
+  int stop = ((x / tab_width) + 1) * tab_width;
+  if (stop > max_x)
+    stop = max_x;
+  int nx = x;
+  for (; nx < stop; nx++)
+    tb_set_cell(nx, y, ' ', fg, bg);
+  return nx;
+}
+
+// Finds the end of the next text segment (stops at '\033').
+// Returns pointer to the found byte, or end if neither was found.
+static inline const char *ansi_find_seg_end(const char *p, const char *end) {
+  while (p < end && *p != '\033')
+    p++;
+  return p;
+}
