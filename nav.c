@@ -506,9 +506,6 @@ static int nav_cd_prev(const int repeat) {
   g_cursor.idx = 0;
   g_right_column_idx = 0;
   g_cursor.name[0] = '\0';
-
-  snprintf(g_msg, sizeof g_msg, "%s", g_cwd);
-  g_msg_type = MSG_TYPE_INFO;
   return 0;
 }
 
