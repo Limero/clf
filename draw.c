@@ -399,7 +399,7 @@ static void draw_right_column(const int offset_x, const int width) {
       switch (errno) {
       case ENOTDIR:
         if (g_current_mode != MODE_COMMAND) {
-          clear_range(offset_x, full_right_width, 1, tb_height() - 2);
+          clear_range(offset_x, full_right_width, 1, tb_height() - g_msg_line_count - 1);
           preview_start(offset_x, g_cursor.name);
         }
         return;

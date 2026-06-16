@@ -187,7 +187,7 @@ static void *preview_worker(void *arg) {
     ansi_state_t ansi_state;
     ansi_state_reset(&ansi_state);
 
-    const int preview_bottom = tb_height() - MAX(1, g_msg_line_count) - 1;
+    const int preview_bottom = tb_height() - g_msg_line_count - 1;
 
     for (;;) {
       pthread_mutex_lock(&g_preview_mutex);
