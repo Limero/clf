@@ -58,13 +58,6 @@ static void test_ansi_find_seg_end(void) {
     assert_int(r - s, ==, 3);
   }
 
-  // Goes to end with plain text
-  {
-    const char *s = "abcdef";
-    const char *r = ansi_find_seg_end(s, s + 6);
-    assert_int(r - s, ==, 6);
-  }
-
   // Stops at tab before escape
   {
     const char *s = "abc\t\033[0m";
@@ -72,7 +65,14 @@ static void test_ansi_find_seg_end(void) {
     assert_int(r - s, ==, 3);
   }
 
-  // Empty string goes to end
+  // Goes to end with plain text
+  {
+    const char *s = "abcdef";
+    const char *r = ansi_find_seg_end(s, s + 6);
+    assert_int(r - s, ==, 6);
+  }
+
+  // Goes to end with empty string
   {
     const char *s = "";
     const char *r = ansi_find_seg_end(s, s);
