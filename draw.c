@@ -11,6 +11,21 @@
 #include <sys/stat.h>
 
 static int g_msg_clear_top = -1;
+static int g_prev_msg_line_count = 0;
+
+static void clear_line(const int y) {
+  for (int i = 0; i < tb_width(); i++) {
+    tb_set_cell(i, y, ' ', 0, 0);
+  }
+}
+
+static void clear_range(const int offset_x, const int width, const int start_y, const int end_y) {
+  for (int y = start_y; y < end_y; y++) {
+    for (int x = offset_x; x < offset_x + width; x++) {
+      tb_set_cell(x, y, ' ', 0, 0);
+    }
+  }
+}
 
 static int compare_dirs_first(const struct dirent **a, const struct dirent **b) {
   if ((*a)->d_type == DT_DIR && (*b)->d_type != DT_DIR) {
@@ -216,6 +231,7 @@ static bool is_selected_in_dir(const char *dir, const char *name) {
 
 static void draw_left_column(const int offset_x, const int width) {
   if (strcmp(g_cwd, "/") == 0) {
+    clear_range(offset_x, width + 1, 1, tb_height() - 2);
     return;
   }
 
@@ -233,6 +249,7 @@ static void draw_left_column(const int offset_x, const int width) {
       snprintf(g_msg, sizeof g_msg, "(%s scandir) %s", __func__, strerror(errno));
       g_msg_type = MSG_TYPE_ERROR;
       g_items_in_left_dir = 0;
+      clear_range(offset_x, width + 1, 1, tb_height() - 2);
       return;
     }
 
@@ -251,6 +268,7 @@ static void draw_left_column(const int offset_x, const int width) {
   }
 
   if (g_items_in_left_dir == 0) {
+    clear_range(offset_x, width + 1, 1, tb_height() - 2);
     return;
   }
 
@@ -283,10 +301,13 @@ static void draw_left_column(const int offset_x, const int width) {
     tb_printf(offset_x + 1, y, fg, bg, " %-*.*s", width - 1, width - 1, g_namelist_left[i]->d_name);
     if (i == g_left_column_idx) {
       tb_set_cell(offset_x + width, y, ' ', fg, bg);
+    } else {
+      tb_set_cell(offset_x + width, y, ' ', 0, 0);
     }
 
     y++;
   }
+  clear_range(offset_x, width + 1, y, tb_height() - 2);
 }
 
 static void draw_middle_column(const int offset_x, const int width) {
@@ -294,6 +315,7 @@ static void draw_middle_column(const int offset_x, const int width) {
 
   int y = 1;
   if (g_items_in_middle_dir == 0) {
+    clear_range(offset_x, width + 1, 1, tb_height() - 2);
     tb_print(offset_x + 3, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
     return;
   }
@@ -340,14 +362,22 @@ static void draw_middle_column(const int offset_x, const int width) {
               g_namelist_middle[i]->d_name);
     if (i == g_cursor.idx) {
       tb_set_cell(offset_x + width, y, ' ', fg, bg);
+    } else {
+      tb_set_cell(offset_x + width, y, ' ', 0, 0);
     }
 
     y++;
   }
+  clear_range(offset_x, width + 1, y, tb_height() - 2);
 }
 
 static void draw_right_column(const int offset_x, const int width) {
   int y = 1;
+
+  const bool msg_changed = (g_prev_msg_line_count != g_msg_line_count);
+  g_prev_msg_line_count = g_msg_line_count;
+
+  const int full_right_width = tb_width() - offset_x;
 
   if (g_update.dir_right) {
     char prev_name[sizeof g_cursor.name] = "";
@@ -368,18 +398,23 @@ static void draw_right_column(const int offset_x, const int width) {
       g_items_in_right_dir = 0;
       switch (errno) {
       case ENOTDIR:
-        if (g_current_mode != MODE_COMMAND)
+        if (g_current_mode != MODE_COMMAND) {
+          clear_range(offset_x, full_right_width, 1, tb_height() - 2);
           preview_start(offset_x, g_cursor.name);
+        }
         return;
       case ENOENT:
+        clear_range(offset_x, full_right_width, 1, tb_height() - 2);
         return;
       default:
+        clear_range(offset_x, full_right_width, 1, tb_height() - 2);
         tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, strerror(errno));
         return;
       }
     }
 
     g_items_in_right_dir = n;
+    clear_range(offset_x, full_right_width, 1, tb_height() - 2);
 
     // When items are added/removed with commands the cursor may land on the wrong item
     if (g_right_column_idx >= n) {
@@ -399,7 +434,7 @@ static void draw_right_column(const int offset_x, const int width) {
     if (lstat(g_cursor.name, &st) == 0) {
       if (S_ISDIR(st.st_mode)) {
         tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
-      } else if (g_current_mode != MODE_COMMAND) {
+      } else if (g_current_mode != MODE_COMMAND && msg_changed) {
         preview_start(offset_x, g_cursor.name);
       }
     }
@@ -433,9 +468,11 @@ static void draw_right_column(const int offset_x, const int width) {
 
     y++;
   }
+  clear_range(offset_x, full_right_width, y, tb_height() - 2);
 }
 
 static void draw_path(void) {
+  clear_line(0);
   tb_printf(0, 0, COLOR_PATH_USER_HOST, COLOR_DEFAULT, "%s@%s", g_username, g_hostname);
   const int offset = g_username_len + g_hostname_len + 2;
   tb_print(offset, 0, COLOR_DEFAULT, COLOR_DEFAULT, ":");
@@ -451,12 +488,6 @@ static void draw_path(void) {
       tb_printf(offset, 0, COLOR_PATH_DIR, COLOR_DEFAULT, "%s/", g_cwd);
       tb_print(offset + strlen(g_cwd) + 1, 0, COLOR_PATH_CURSOR, COLOR_DEFAULT, g_cursor.name);
     }
-  }
-}
-
-static void clear_line(const int y) {
-  for (int i = 0; i <= tb_width(); i++) {
-    tb_set_cell(i, y, ' ', 0, 0);
   }
 }
 
@@ -632,10 +663,12 @@ static void draw_status_prompt(const char *prompt, const char *buf, const int cu
 
 void draw_status_running_command(void) {
   const int y = tb_height() - 1;
+  pthread_mutex_lock(&g_tb_mutex);
   clear_line(y);
   tb_print(0, y, COLOR_DEFAULT, COLOR_DEFAULT, ">");
   tb_set_cursor(1, y);
   tb_present();
+  pthread_mutex_unlock(&g_tb_mutex);
 }
 
 static void draw_status_confirmation(const char *msg1, const char *msg2) {

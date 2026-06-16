@@ -119,7 +119,6 @@ static void nav_move_to_line(const int l) {
   if (g_cursor.idx == l)
     return;
   g_update.dir_right = true;
-  tb_clear();
   g_cursor.idx = l;
   g_right_column_idx = 0;
 }
@@ -143,7 +142,6 @@ static void nav_move_up(const int n) {
   }
 
   g_update.dir_right = true;
-  tb_clear();
   g_cursor.idx -= n;
   g_right_column_idx = 0;
 }
@@ -159,21 +157,18 @@ static void nav_move_down(const int n) {
   }
 
   g_update.dir_right = true;
-  tb_clear();
   g_cursor.idx += n;
   g_right_column_idx = 0;
 }
 
 static void nav_move_page_up(void) {
   g_update.dir_right = true;
-  tb_clear();
   g_cursor.idx = MAX(g_cursor.idx - tb_height() / 2, 0);
   g_right_column_idx = 0;
 }
 
 static void nav_move_page_down(void) {
   g_update.dir_right = true;
-  tb_clear();
   g_cursor.idx = MIN(g_cursor.idx + tb_height() / 2, g_items_in_middle_dir - 1);
   g_right_column_idx = 0;
 }
@@ -188,7 +183,6 @@ static void nav_dir_back(void) {
   g_update.dir_left = true;
   g_update.dir_middle = true;
   g_update.dir_right = true;
-  tb_clear();
 
   if (chdir("../") != 0) {
     snprintf(g_msg, sizeof g_msg, "(%s chdir) %s", __func__, strerror(errno));
@@ -211,7 +205,6 @@ static void nav_dir_enter(void) {
   g_update.dir_left = true;
   g_update.dir_middle = true;
   g_update.dir_right = true;
-  tb_clear();
 
   if (chdir(g_cursor.name) == -1) {
     switch (errno) {
@@ -319,7 +312,6 @@ static int nav_multi_select(const int repeat) {
   }
   g_cursor.name[0] = '\0';
   g_update.dir_middle = true;
-  tb_clear();
   nav_move_down(1);
   return 0;
 }
@@ -333,7 +325,6 @@ static int nav_yank(const int repeat, const bool is_cut) {
     copy_yank(paths, g_selected_count, is_cut);
     g_selected_count = 0;
     g_update.dir_middle = true;
-    tb_clear();
   } else {
     if (g_cursor.name[0] == '\0') {
       snprintf(g_msg, sizeof g_msg, "no file selected");
@@ -373,14 +364,12 @@ static int nav_delete(const int repeat) {
       g_selected_count = 0;
       g_update.dir_middle = true;
       g_update.dir_right = true;
-      tb_clear();
     }
   } else if (nav_get_confirmation("delete ", g_cursor.name)) {
     os_exec_output(CMD_DELETE, g_cursor.name);
     g_cursor.idx = g_cursor.idx ? g_cursor.idx - 1 : 0;
     g_update.dir_middle = true;
     g_update.dir_right = true;
-    tb_clear();
   }
   return 0;
 }
@@ -392,7 +381,6 @@ static int nav_paste(const int repeat) {
   g_update.dir_left = true;
   g_update.dir_middle = true;
   g_update.dir_right = true;
-  tb_clear();
   return 0;
 }
 
@@ -412,7 +400,6 @@ static int nav_rename(const int repeat) {
     memcpy(g_cursor.name, new_name, sizeof(g_cursor.name));
     g_update.dir_middle = true;
     g_update.dir_right = true;
-    tb_clear();
   }
   tb_hide_cursor();
   return 0;
@@ -423,7 +410,6 @@ static int nav_search_next(const int repeat) {
   if (g_search_idx_before == -1)
     return 0;
   set_cursor_idx_to_search(true, g_cursor.idx + 1);
-  tb_clear();
   return 0;
 }
 
@@ -432,7 +418,6 @@ static int nav_search_prev(const int repeat) {
   if (g_search_idx_before == -1)
     return 0;
   set_cursor_idx_to_search(false, g_cursor.idx - 1);
-  tb_clear();
   return 0;
 }
 
@@ -468,7 +453,6 @@ static int nav_find(const int repeat, const bool forward) {
     g_msg_type = MSG_TYPE_ERROR;
   }
   tb_hide_cursor();
-  tb_clear();
   return 0;
 }
 
@@ -502,7 +486,6 @@ static int nav_cd_prev(const int repeat) {
   g_update.dir_left = true;
   g_update.dir_middle = true;
   g_update.dir_right = true;
-  tb_clear();
   g_cursor.idx = 0;
   g_right_column_idx = 0;
   g_cursor.name[0] = '\0';
@@ -553,7 +536,6 @@ static bool nav_execute_cmd(const char *cmd, const int repeat) {
     g_update.dir_left = true;
     g_update.dir_middle = true;
     g_update.dir_right = true;
-    tb_clear();
     return false;
   }
   for (int j = 0; j < BUILTIN_ACTIONS_LEN; j++) {
@@ -563,7 +545,6 @@ static bool nav_execute_cmd(const char *cmd, const int repeat) {
   }
   snprintf(g_msg, sizeof g_msg, "unknown action: %s", cmd);
   g_msg_type = MSG_TYPE_ERROR;
-  tb_clear();
   return false;
 }
 
@@ -700,7 +681,6 @@ static int nav_handle_event_command(const struct tb_event *ev) {
       if (!OPT_INCSEARCH)
         set_cursor_idx_to_search(true, 0);
       nav_switch_mode(MODE_NORMAL);
-      tb_clear();
       return 0;
     }
     if (g_current_command.chars[0] == 'q' && g_current_command.chars[1] == '\0') {
@@ -717,7 +697,6 @@ static int nav_handle_event_command(const struct tb_event *ev) {
     g_update.dir_left = true;
     g_update.dir_middle = true;
     g_update.dir_right = true;
-    tb_clear();
     return 0;
   }
 
@@ -735,7 +714,6 @@ static int nav_handle_event_command(const struct tb_event *ev) {
   if (OPT_INCSEARCH && g_search_idx_before >= 0 &&
       (ev->ch || ev->key == TB_KEY_BACKSPACE || ev->key == TB_KEY_BACKSPACE2)) {
     set_cursor_idx_to_search(true, 0);
-    tb_clear();
   }
 
   return 0;
@@ -754,13 +732,11 @@ int nav_handle_event(const struct tb_event *ev, int *repeat) {
     g_show_hidden = !g_show_hidden;
     g_update.dir_middle = true;
     g_update.dir_right = true;
-    tb_clear();
     return 0;
   case TB_KEY_CTRL_R:
     g_update.dir_left = true;
     g_update.dir_middle = true;
     g_update.dir_right = true;
-    tb_clear();
     return 0;
   case TB_KEY_CTRL_C:
     return -1;

@@ -187,14 +187,7 @@ static void *preview_worker(void *arg) {
     ansi_state_t ansi_state;
     ansi_state_reset(&ansi_state);
 
-    pthread_mutex_lock(&g_tb_mutex);
     const int preview_bottom = tb_height() - MAX(1, g_msg_line_count) - 1;
-    for (int cy = 1; cy <= preview_bottom; cy++) {
-      for (int cx = preview_x; cx < tb_width(); cx++) {
-        tb_set_cell(cx, cy, ' ', 0, 0);
-      }
-    }
-    pthread_mutex_unlock(&g_tb_mutex);
 
     for (;;) {
       pthread_mutex_lock(&g_preview_mutex);
