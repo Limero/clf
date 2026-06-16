@@ -68,7 +68,7 @@ static int nav_get_prompt_char(const char *prompt) {
 
   pthread_mutex_lock(&g_tb_mutex);
   if (g_msg[0] != '\0') {
-    rendered_lines = render_multiline_msg(tb_height() - 2);
+    rendered_lines = render_multiline_msg(tb_height() - 2, count_msg_lines());
     if (rendered_lines > 1)
       g_msg_line_count = rendered_lines;
     g_msg[0] = '\0';

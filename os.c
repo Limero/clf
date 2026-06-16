@@ -6,6 +6,7 @@
 #ifndef _DEFAULT_SOURCE
 #define _DEFAULT_SOURCE
 #endif
+#include "draw.c"
 #include "global.h"
 #include <assert.h>
 #include <errno.h>
@@ -166,6 +167,12 @@ static void popen_cleanup(const int *stdinpipe, const int *stdoutpipe, const boo
   sigaction(SIGPIPE, &sa_old[2], NULL);
 }
 
+// Returns true if buf contains escape sequences typical of interactive TUI programs (e.g., vim).
+static bool is_tui_output(const char *buf) {
+  return strstr(buf, "\033[?1049h") || strstr(buf, "\033[?1047h") || strstr(buf, "\033[?47h") ||
+         strstr(buf, "\033[6n") || strstr(buf, "\033[c");
+}
+
 static bool build_cmd(char *cmd, const size_t cmd_size, const char *c, const char *arg, const char *suffix) {
   char name_quoted[sizeof g_cursor.name * 4 + 2];
   char arg_quoted[sizeof g_cursor.name * 4 + 2] = "";
@@ -308,6 +315,8 @@ static int os_popen_full_shell(const char *cmd, char *buf, const size_t buf_size
   size_t total = 0;
   ssize_t n;
   bool indicator_shown = false;
+  bool streaming = false;
+  bool screen_full = false;
   struct pollfd pfd = {.fd = read_fd, .events = POLLIN};
 
   while (total + 1 < buf_size) {
@@ -326,6 +335,15 @@ static int os_popen_full_shell(const char *cmd, char *buf, const size_t buf_size
           buf[wp++] = buf[total + i];
       total = wp;
       buf[total] = '\0';
+
+      if (is_tui_output(buf))
+        screen_full = true;
+
+      if (!streaming && total > 0)
+        streaming = true;
+
+      if (streaming && !screen_full)
+        screen_full = draw_streaming_msg();
     } else if (pret == 0) {
       indicator_cb();
       indicator_shown = true;
@@ -397,6 +415,7 @@ void os_exec_output_deferred(const char *c, const char *arg, void (*indicator_cb
     return;
   }
 
+  g_msg_type = MSG_TYPE_INFO;
   const int status = os_popen_full_shell(cmd, g_msg, sizeof g_msg, indicator_cb, threshold_ms);
   if (status == -1) {
     snprintf(g_msg, sizeof g_msg, "(%s) failed to run command", __func__);

@@ -22,7 +22,6 @@
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format
 * Consider implementing scrollable pager for long command output instead of capping it
-* Show command output while its running, not just on finish
 * Investigate supporting image previews
 * Support truecolor in preview and command output for programs like `bat` (set TB_OPT_ATTR_W)
 

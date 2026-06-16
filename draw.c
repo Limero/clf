@@ -510,9 +510,9 @@ static int count_msg_lines(void) {
 }
 
 // Renders g_msg as multiline text at the bottom of the screen,
-// with the last line at bottom_y. Returns number of lines rendered (0 if empty).
-static int render_multiline_msg(int bottom_y) {
-  const int line_count = count_msg_lines();
+// with the last line at bottom_y.  line_count must be the result of count_msg_lines().
+// Returns number of lines rendered (0 if empty).
+static int render_multiline_msg(const int bottom_y, const int line_count) {
   if (line_count == 0)
     return 0;
 
@@ -547,40 +547,7 @@ static int render_multiline_msg(int bottom_y) {
       x = 7;
     }
 
-    // ANSI-aware rendering of this line
-    const char *p = start;
-    const char *line_end = start + len;
-
-    while (p < line_end) {
-      if (*p == '\033') {
-        p = ansi_skip_escape(p, line_end, &state);
-        continue;
-      }
-
-      if (*p == '\t') {
-        x = ansi_expand_tab(x, y, tb_width(), 8, state.fg, state.bg);
-        p++;
-        continue;
-      }
-
-      const char *seg_start = p;
-      p = ansi_find_seg_end(p, line_end);
-
-      const int seg_len = (int)(p - seg_start);
-      if (seg_len > 0 && x < tb_width()) {
-        const int seg_chars = utf8_cell_count(seg_start, seg_len);
-        const int avail = tb_width() - x;
-        const int take = MIN(seg_chars, avail);
-
-        const char *render_end = seg_start;
-        for (int j = 0; j < take; j++)
-          render_end += tb_utf8_char_length(*render_end);
-        const int byte_len = (int)(render_end - seg_start);
-
-        tb_printf(x, y, state.fg, state.bg, "%.*s", byte_len, seg_start);
-        x += take;
-      }
-    }
+    x = render_ansi_str(start, len, x, y, tb_width(), &state);
 
     start = end ? end + 1 : start + len;
   }
@@ -588,11 +555,33 @@ static int render_multiline_msg(int bottom_y) {
   return display_lines;
 }
 
+bool draw_streaming_msg(void) {
+  char *cwd_marker = strstr(g_msg, "--CWD_MARKER--");
+  char saved = '\0';
+  if (cwd_marker) {
+    saved = *cwd_marker;
+    *cwd_marker = '\0';
+  }
+
+  pthread_mutex_lock(&g_tb_mutex);
+  const int visible_lines = count_msg_lines();
+  const int rendered = render_multiline_msg(tb_height() - 1, visible_lines);
+  g_msg_line_count = MIN(visible_lines, tb_height() - 1);
+  tb_present();
+  pthread_mutex_unlock(&g_tb_mutex);
+
+  if (cwd_marker)
+    *cwd_marker = saved;
+
+  return rendered < visible_lines;
+}
+
 static void draw_message(void) {
-  const int line_count = render_multiline_msg(tb_height() - 1);
-  if (line_count == 0)
+  const int line_count = count_msg_lines();
+  const int rendered = render_multiline_msg(tb_height() - 1, line_count);
+  if (rendered == 0)
     return;
-  g_msg_clear_top = tb_height() - line_count;
+  g_msg_clear_top = tb_height() - rendered;
   g_msg[0] = '\0';
 }
 
@@ -666,7 +655,7 @@ void draw_status_running_command(void) {
   pthread_mutex_lock(&g_tb_mutex);
   clear_line(y);
   tb_print(0, y, COLOR_DEFAULT, COLOR_DEFAULT, ">");
-  tb_set_cursor(1, y);
+  tb_hide_cursor();
   tb_present();
   pthread_mutex_unlock(&g_tb_mutex);
 }

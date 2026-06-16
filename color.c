@@ -1,5 +1,6 @@
 #pragma once
 
+#include "global.h"
 #include <assert.h>
 #include <dirent.h>
 #define TB_IMPL
@@ -255,4 +256,43 @@ static inline const char *ansi_find_seg_end(const char *p, const char *end) {
   while (p < end && *p != '\033' && *p != '\t')
     p++;
   return p;
+}
+
+// Renders a single line of text at position (x,y) with ANSI escape support.
+// Text is limited to max_x display cells.  state tracks ANSI attributes across calls.
+// Returns the new x position after rendering.
+static int render_ansi_str(const char *start, const int len, int x, const int y, const int max_x, ansi_state_t *state) {
+  const char *p = start;
+  const char *line_end = start + len;
+
+  while (p < line_end) {
+    if (*p == '\033') {
+      p = ansi_skip_escape(p, line_end, state);
+      continue;
+    }
+    if (*p == '\t') {
+      x = ansi_expand_tab(x, y, max_x, (int)TAB_WIDTH, state->fg, state->bg);
+      p++;
+      continue;
+    }
+
+    const char *seg_start = p;
+    p = ansi_find_seg_end(p, line_end);
+
+    const int seg_len = (int)(p - seg_start);
+    if (seg_len > 0 && x < max_x) {
+      const int seg_chars = utf8_cell_count(seg_start, seg_len);
+      const int avail = max_x - x;
+      const int take = MIN(seg_chars, avail);
+
+      const char *render_end = seg_start;
+      for (int j = 0; j < take; j++)
+        render_end += tb_utf8_char_length(*render_end);
+      const int byte_len = (int)(render_end - seg_start);
+
+      tb_printf(x, y, state->fg, state->bg, "%.*s", byte_len, seg_start);
+      x += take;
+    }
+  }
+  return x;
 }
