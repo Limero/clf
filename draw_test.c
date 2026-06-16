@@ -43,7 +43,45 @@ static void test_count_msg_lines(void) {
   assert_int(count_msg_lines(), ==, 0);
 }
 
+static void test_ansi_find_seg_end(void) {
+  // Stops at tab
+  {
+    const char *s = "\tdef";
+    const char *r = ansi_find_seg_end(s, s + 4);
+    assert_int(r - s, ==, 0);
+  }
+
+  // Stops at escape
+  {
+    const char *s = "abc\033[0mdef";
+    const char *r = ansi_find_seg_end(s, s + 10);
+    assert_int(r - s, ==, 3);
+  }
+
+  // Goes to end with plain text
+  {
+    const char *s = "abcdef";
+    const char *r = ansi_find_seg_end(s, s + 6);
+    assert_int(r - s, ==, 6);
+  }
+
+  // Stops at tab before escape
+  {
+    const char *s = "abc\t\033[0m";
+    const char *r = ansi_find_seg_end(s, s + 8);
+    assert_int(r - s, ==, 3);
+  }
+
+  // Empty string goes to end
+  {
+    const char *s = "";
+    const char *r = ansi_find_seg_end(s, s);
+    assert_int(r - s, ==, 0);
+  }
+}
+
 Test draw_tests[] = {
     {"/count_msg_lines", test_count_msg_lines},
+    {"/ansi_find_seg_end", test_ansi_find_seg_end},
     {NULL, NULL},
 };

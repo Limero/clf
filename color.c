@@ -252,7 +252,7 @@ static inline int ansi_expand_tab(const int x, const int y, const int max_x, con
 // Finds the end of the next text segment (stops at '\033').
 // Returns pointer to the found byte, or end if neither was found.
 static inline const char *ansi_find_seg_end(const char *p, const char *end) {
-  while (p < end && *p != '\033')
+  while (p < end && *p != '\033' && *p != '\t')
     p++;
   return p;
 }
