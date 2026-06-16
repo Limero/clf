@@ -357,7 +357,11 @@ static int nav_delete(const int repeat) {
     return 0;
   if (g_selected_count > 0) {
     char msg[64];
-    snprintf(msg, sizeof msg, "%d items", g_selected_count);
+    if (g_selected_count == 1) {
+      strlcpy(msg, g_selected_paths[0], sizeof msg);
+    } else {
+      snprintf(msg, sizeof msg, "%d items", g_selected_count);
+    }
     if (nav_get_confirmation("delete ", msg)) {
       for (int i = 0; i < g_selected_count; i++)
         os_exec_output(CMD_DELETE, g_selected_paths[i]);
