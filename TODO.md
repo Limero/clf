@@ -3,7 +3,6 @@
 ## Bugs
 
 * Yanking file in one instance doesn't update the others
-* Possible to overflow when adding to command history and if the commands are too long
 
 ## Features
 

@@ -43,7 +43,7 @@ static int nav_handle_input_key(const struct tb_event *ev, char *buf, int *curso
     }
     return 0;
   default:
-    if (ev->ch) {
+    if (ev->ch && *len < (int)sizeof(buf) - 1) {
       string_insert_at(buf, *cursor, ev->ch);
       (*cursor)++;
       (*len)++;

@@ -97,5 +97,5 @@ const unsigned int OPT_CMD_COMPLETE = 1;
 const unsigned int OPT_MULTISELECT = 1;
 
 // Enable command history (up/down arrows to recall previous commands)
-// Will allocate an extra ~25KB static memory
+// Will allocate an extra ~40KB static memory to store up to 10 entries
 const unsigned int OPT_CMD_HISTORY = 1;

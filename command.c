@@ -4,8 +4,10 @@
 #include <stdint.h>
 #include <string.h>
 
+#define CMD_HISTORY_MAX 10
+
 static struct {
-  char history[100][256]; // ~25KB
+  char history[CMD_HISTORY_MAX][4096]; // ~40KB
   int count;
   int cursor;
 } command_history;
@@ -35,22 +37,31 @@ void command_mode_enter(void) {
 }
 
 void command_history_prev(void) {
-  if (!OPT_CMD_HISTORY || command_history.cursor == 0) {
+  if (!OPT_CMD_HISTORY || command_history.cursor == 0)
     return;
-  }
+  int oldest = command_history.count > CMD_HISTORY_MAX ? command_history.count - CMD_HISTORY_MAX : 0;
+  if (command_history.cursor <= oldest)
+    return;
   command_history.cursor--;
-  strlcpy(g_current_command.chars, command_history.history[command_history.cursor], sizeof(g_current_command.chars));
+  strlcpy(g_current_command.chars, command_history.history[command_history.cursor % CMD_HISTORY_MAX],
+          sizeof(g_current_command.chars));
   const int len = strlen(g_current_command.chars);
   g_current_command.len = len;
   g_current_command.cursor = len;
 }
 
 void command_history_next(void) {
-  if (!OPT_CMD_HISTORY || command_history.cursor >= command_history.count) {
+  if (!OPT_CMD_HISTORY || command_history.cursor >= command_history.count)
+    return;
+  command_history.cursor++;
+  if (command_history.cursor >= command_history.count) {
+    g_current_command.chars[0] = '\0';
+    g_current_command.len = 0;
+    g_current_command.cursor = 0;
     return;
   }
-  command_history.cursor++;
-  strlcpy(g_current_command.chars, command_history.history[command_history.cursor], sizeof(g_current_command.chars));
+  strlcpy(g_current_command.chars, command_history.history[command_history.cursor % CMD_HISTORY_MAX],
+          sizeof(g_current_command.chars));
   const int len = strlen(g_current_command.chars);
   g_current_command.len = len;
   g_current_command.cursor = len;
@@ -59,7 +70,7 @@ void command_history_next(void) {
 void command_history_add(void) {
   if (!OPT_CMD_HISTORY)
     return;
-  strlcpy(command_history.history[command_history.count], g_current_command.chars,
-          sizeof(command_history.history[command_history.count]));
+  strlcpy(command_history.history[command_history.count % CMD_HISTORY_MAX], g_current_command.chars,
+          sizeof(command_history.history[0]));
   command_history.count++;
 }
