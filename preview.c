@@ -41,59 +41,14 @@ static void preview_stop_previous(void) {
 
 static void render_ansi_line(const int preview_x, const int preview_width, const int preview_bottom, const char *buf,
                              const size_t len, int *y, int *lsp, bool *truncated, ansi_state_t *state) {
-  const char *p = buf;
-  const char *end = buf + len;
-  int x = 0;
+  const int y_before = *y;
+  render_ansi_str(buf, (int)len, preview_x, y, preview_x + preview_width, true, preview_bottom, truncated, state);
 
-  while (p < end && !*truncated) {
-    if (*p == '\033') {
-      p = ansi_skip_escape(p, end, state);
-      continue;
-    }
-
-    if (*p == '\t') {
-      x = ansi_expand_tab(preview_x + x, *y, preview_x + preview_width, (int)TAB_WIDTH, state->fg, state->bg) -
-          preview_x;
-      p++;
-      continue;
-    }
-
-    const char *seg_start = p;
-    p = ansi_find_seg_end(p, end);
-
-    const int seg_bytes = (int)(p - seg_start);
-    const int seg_chars = utf8_cell_count(seg_start, seg_bytes);
-    if (seg_chars > 0) {
-      const char *src = seg_start;
-      int remaining = seg_chars;
-
-      while (remaining > 0) {
-        const int space = preview_width - x;
-        if (space == 0) {
-          (*y)++;
-          x = 0;
-          (*lsp)++;
-          if (*lsp >= 3 || *y == 2) {
-            tb_present();
-            *lsp = 0;
-          }
-          if (*y >= preview_bottom) {
-            *truncated = true;
-            return;
-          }
-        }
-
-        const int take = MIN(remaining, space);
-        const char *chunk_end = src;
-        for (int i = 0; i < take; i++)
-          chunk_end += tb_utf8_char_length(*chunk_end);
-        const int chunk_bytes = (int)(chunk_end - src);
-
-        tb_printf(preview_x + x, *y, state->fg, state->bg, "%.*s", chunk_bytes, src);
-        x += take;
-        remaining -= take;
-        src = chunk_end;
-      }
+  for (int line = y_before + 1; line <= *y && !*truncated; line++) {
+    (*lsp)++;
+    if (*lsp >= 3 || line == 2) {
+      tb_present();
+      *lsp = 0;
     }
   }
 

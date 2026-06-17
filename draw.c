@@ -528,7 +528,7 @@ static int render_multiline_msg(const int bottom_y, const int line_count) {
   for (int i = 0; i < display_lines; i++) {
     const char *end = strchr(start, '\n');
     const int len = end ? (int)(end - start) : (int)strlen(start);
-    const int y = bottom_y - display_lines + 1 + i;
+    int y = bottom_y - display_lines + 1 + i;
 
     int x = 0;
 
@@ -547,7 +547,7 @@ static int render_multiline_msg(const int bottom_y, const int line_count) {
       x = 7;
     }
 
-    x = render_ansi_str(start, len, x, y, tb_width(), &state);
+    x = render_ansi_str(start, len, x, &y, tb_width(), false, 0, NULL, &state);
 
     start = end ? end + 1 : start + len;
   }

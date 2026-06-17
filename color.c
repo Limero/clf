@@ -258,10 +258,13 @@ static inline const char *ansi_find_seg_end(const char *p, const char *end) {
   return p;
 }
 
-// Renders a single line of text at position (x,y) with ANSI escape support.
-// Text is limited to max_x display cells.  state tracks ANSI attributes across calls.
-// Returns the new x position after rendering.
-static int render_ansi_str(const char *start, const int len, int x, const int y, const int max_x, ansi_state_t *state) {
+// Renders text with ANSI escape support.  If wrap is true, text wraps at max_x
+// and y is incremented for each new line (clipped at bottom_y).  If wrap is
+// false, text clips at max_x (same-line).  state tracks ANSI attributes across
+// calls.  Returns the new x position after rendering.
+static int render_ansi_str(const char *start, const int len, int x, int *y, const int max_x, const bool wrap,
+                           const int bottom_y, bool *truncated, ansi_state_t *state) {
+  const int x_start = x;
   const char *p = start;
   const char *line_end = start + len;
 
@@ -271,7 +274,7 @@ static int render_ansi_str(const char *start, const int len, int x, const int y,
       continue;
     }
     if (*p == '\t') {
-      x = ansi_expand_tab(x, y, max_x, (int)TAB_WIDTH, state->fg, state->bg);
+      x = ansi_expand_tab(x, *y, max_x, (int)TAB_WIDTH, state->fg, state->bg);
       p++;
       continue;
     }
@@ -279,19 +282,44 @@ static int render_ansi_str(const char *start, const int len, int x, const int y,
     const char *seg_start = p;
     p = ansi_find_seg_end(p, line_end);
 
-    const int seg_len = (int)(p - seg_start);
-    if (seg_len > 0 && x < max_x) {
-      const int seg_chars = utf8_cell_count(seg_start, seg_len);
+    const int seg_bytes = (int)(p - seg_start);
+    if (seg_bytes > 0 && x < max_x) {
+      const int seg_chars = utf8_cell_count(seg_start, seg_bytes);
       const int avail = max_x - x;
-      const int take = MIN(seg_chars, avail);
 
-      const char *render_end = seg_start;
-      for (int j = 0; j < take; j++)
-        render_end += tb_utf8_char_length(*render_end);
-      const int byte_len = (int)(render_end - seg_start);
-
-      tb_printf(x, y, state->fg, state->bg, "%.*s", byte_len, seg_start);
-      x += take;
+      if (wrap && avail < seg_chars) {
+        const char *chunk = seg_start;
+        int remaining = seg_chars;
+        while (remaining > 0) {
+          if (*truncated)
+            return x;
+          const int space = max_x - x;
+          if (space == 0) {
+            (*y)++;
+            if (*y >= bottom_y) {
+              *truncated = true;
+              return x;
+            }
+            x = x_start;
+          }
+          const int take = MIN(remaining, space);
+          const char *chunk_end = chunk;
+          for (int j = 0; j < take; j++)
+            chunk_end += tb_utf8_char_length(*chunk_end);
+          tb_printf(x, *y, state->fg, state->bg, "%.*s", (int)(chunk_end - chunk), chunk);
+          x += take;
+          remaining -= take;
+          chunk = chunk_end;
+        }
+      } else {
+        const int take = MIN(seg_chars, avail);
+        const char *render_end = seg_start;
+        for (int j = 0; j < take; j++)
+          render_end += tb_utf8_char_length(*render_end);
+        const int byte_len = (int)(render_end - seg_start);
+        tb_printf(x, *y, state->fg, state->bg, "%.*s", byte_len, seg_start);
+        x += take;
+      }
     }
   }
   return x;
