@@ -3,7 +3,6 @@
 ## Bugs
 
 * Yanking file in one instance doesn't update the others, probably need to poll the clipboard file
-* Gap between middle and right column on "empty" message in empty dir doesn't match indentation of preview
 * Indentation of `:ls` is uneven because we use `TAB_WIDTH` instead of fixed 8 spaces
 
 ## Features

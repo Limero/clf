@@ -316,7 +316,7 @@ static void draw_middle_column(const int offset_x, const int width) {
   int y = 1;
   if (g_items_in_middle_dir == 0) {
     clear_range(offset_x, width + 1, 1, tb_height() - 2);
-    tb_print(offset_x + 3, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
+    tb_print(offset_x + 1, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
     return;
   }
 
@@ -433,7 +433,7 @@ static void draw_right_column(const int offset_x, const int width) {
     struct stat st;
     if (lstat(g_cursor.name, &st) == 0) {
       if (S_ISDIR(st.st_mode)) {
-        tb_print(offset_x + 2, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
+        tb_print(offset_x + 3, y, COLOR_REVERSE, COLOR_DEFAULT, "empty");
       } else if (g_current_mode != MODE_COMMAND && msg_changed) {
         preview_start(offset_x, g_cursor.name);
       }
