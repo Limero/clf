@@ -2,7 +2,10 @@
 
 ## Bugs
 
-* Yanking file in one instance doesn't update the others
+* Yanking file in one instance doesn't update the others, probably need to poll the clipboard file
+* First line of preview is drawn over full command outputs (like `:git log`)
+* Gap between middle and right column on "empty" message in empty dir doesn't match indentation of preview
+* Indentation of `:ls` is uneven because we use `TAB_WIDTH` instead of fixed 8 spaces
 
 ## Features
 
@@ -23,6 +26,8 @@
 * Consider implementing scrollable pager for long command output instead of capping it
 * Investigate supporting image previews
 * Support truecolor in preview and command output for programs like `bat` (set TB_OPT_ATTR_W)
+* Skip passing binary files to previewer like lf (or let previewer script handle that?)
+* Consider full mouse support. Currently only scrolling is implemented (if added, update readme)
 
 ## General improvements
 * Add tests for more core functionality
@@ -31,3 +36,8 @@
 * Performance config flags might have to converted to `#define` to actually be useful
 * `-r` is appended to `CMD_COPY`, which might be a problem if it's changed to something different
 * Clear command output on enter instead of opening current cursor file
+* Cut preview lines like lf or continue wrapping even if it breaks commands like `bat` in smaller windows? `render_ansi_str` has an argument to wrap or not
+* Investigate if all current `tb_present` are necessary
+* Consider adding previewer fallback to `bat`/`cat` and something for opener
+* Add example printscreen to README
+* Add example opener/previewer script

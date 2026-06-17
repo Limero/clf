@@ -62,6 +62,11 @@ static void render_ansi_line(const int preview_x, const int preview_width, const
     if (*y >= preview_bottom) {
       *truncated = true;
     }
+  } else {
+    // render_ansi_str set *truncated when wrapping past bottom_y; the last
+    // chunk was written to termbox2's buffer via tb_printf but never flushed
+    tb_present();
+    *lsp = 0;
   }
 }
 
@@ -142,7 +147,7 @@ static void *preview_worker(void *arg) {
     ansi_state_t ansi_state;
     ansi_state_reset(&ansi_state);
 
-    int preview_bottom = tb_height() - g_msg_line_count - 1;
+    int preview_bottom = tb_height() - (g_msg_line_count ? g_msg_line_count : 1);
 
     for (;;) {
       pthread_mutex_lock(&g_preview_mutex);
@@ -154,7 +159,7 @@ static void *preview_worker(void *arg) {
         break;
       }
 
-      preview_bottom = tb_height() - g_msg_line_count - 1;
+      preview_bottom = tb_height() - (g_msg_line_count ? g_msg_line_count : 1);
 
       bool eof = false;
       struct pollfd pfd = {.fd = pipefd[0], .events = POLLIN | POLLHUP};
