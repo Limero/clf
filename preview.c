@@ -41,6 +41,12 @@ static void preview_stop_previous(void) {
 
 static void render_ansi_line(const int preview_x, const int preview_width, const int preview_bottom, const char *buf,
                              const size_t len, int *y, int *lsp, bool *truncated, ansi_state_t *state) {
+  // Don't render if we've already reached or passed the bottom
+  if (*y >= preview_bottom) {
+    *truncated = true;
+    return;
+  }
+
   const int y_before = *y;
   render_ansi_str(buf, (int)len, preview_x, y, preview_x + preview_width, true, preview_bottom, truncated, state);
 
