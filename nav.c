@@ -7,7 +7,7 @@
 
 static const int KEY_COMMANDS_LEN = sizeof(KEY_COMMANDS) / sizeof(KEY_COMMANDS[0]);
 
-static int nav_handle_input_key(const struct tb_event *ev, char *buf, int *cursor, int *len) {
+static int nav_handle_input_key(const struct tb_event *ev, char *buf, const int buf_cap, int *cursor, int *len) {
   switch (ev->key) {
   case TB_KEY_ENTER:
     return 1;
@@ -43,7 +43,7 @@ static int nav_handle_input_key(const struct tb_event *ev, char *buf, int *curso
     }
     return 0;
   default:
-    if (ev->ch && *len < (int)sizeof(buf) - 1) {
+    if (ev->ch && *len < buf_cap - 1) {
       string_insert_at(buf, *cursor, ev->ch);
       (*cursor)++;
       (*len)++;
@@ -110,7 +110,7 @@ static char *nav_get_prompt_input(const char *prompt, const char *initial) {
     struct tb_event ev = {0};
     tb_poll_event(&ev);
 
-    int r = nav_handle_input_key(&ev, buf, &cursor, &len);
+    int r = nav_handle_input_key(&ev, buf, (int)sizeof(buf), &cursor, &len);
     if (r == 1)
       return buf;
     if (r == -1)
@@ -681,7 +681,8 @@ static int nav_handle_event_command(const struct tb_event *ev) {
   if (OPT_CMD_COMPLETE)
     complete_reset();
   const int prev_len = g_current_command.len;
-  const int r = nav_handle_input_key(ev, g_current_command.chars, &g_current_command.cursor, &g_current_command.len);
+  const int r = nav_handle_input_key(ev, g_current_command.chars, (int)sizeof(g_current_command.chars),
+                                     &g_current_command.cursor, &g_current_command.len);
 
   if (r == 1) {
     if (g_search_idx_before >= 0) {
