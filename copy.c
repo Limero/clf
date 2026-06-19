@@ -47,6 +47,27 @@ static int parse_clipboard(char *buf, bool *is_move, char (*paths)[PATH_MAX], co
   return count;
 }
 
+static void copy_resolve_path(const char *target_dir, const char *source_path, char *out, const size_t out_size) {
+  const char *base = strrchr(source_path, '/');
+  base = base ? base + 1 : source_path;
+
+  snprintf(out, out_size, "%s/%s", target_dir, base);
+  if (access(out, F_OK) != 0)
+    return;
+
+  const char *dot = strrchr(base, '.');
+  if (dot == base)
+    dot = NULL;
+  const int name_len = dot ? (int)(dot - base) : (int)strlen(base);
+  const char *ext = dot ? dot : "";
+
+  for (int i = 1; i < 1000; i++) {
+    snprintf(out, out_size, "%s/%.*s%d%s", target_dir, name_len, base, i, ext);
+    if (access(out, F_OK) != 0)
+      return;
+  }
+}
+
 void copy_yank(const char *paths[], const int count, const bool delete_source_on_paste) {
   if (count <= 0)
     return;
@@ -154,27 +175,29 @@ bool copy_paste(const char *target_dir_path) {
   }
 
   int success_count = 0;
+  char first_resolved_name[sizeof g_cursor.name] = "";
   for (int i = 0; i < path_count; i++) {
-    bool ok = is_move ? os_move(g_clipboard_paths[i], target_dir_path) : os_copy(g_clipboard_paths[i], target_dir_path);
-    if (ok)
+    char dest_path[PATH_MAX];
+    copy_resolve_path(target_dir_path, g_clipboard_paths[i], dest_path, sizeof dest_path);
+    bool ok = is_move ? os_move(g_clipboard_paths[i], dest_path) : os_copy(g_clipboard_paths[i], dest_path);
+    if (ok) {
       success_count++;
+      if (i == 0) {
+        const char *base = strrchr(dest_path, '/');
+        strlcpy(first_resolved_name, base ? base + 1 : dest_path, sizeof first_resolved_name);
+      }
+    }
   }
 
   if (success_count > 0) {
     const char *op = is_move ? "Moved" : "Copied";
     if (path_count == 1) {
-      char file_name[256];
-      const char *base = strrchr(g_clipboard_paths[0], '/');
-      base = base ? base + 1 : g_clipboard_paths[0];
-      strlcpy(file_name, base, sizeof file_name);
-      snprintf(g_msg, sizeof g_msg, "%s %s", op, file_name);
+      snprintf(g_msg, sizeof g_msg, "%s %s", op, first_resolved_name);
     } else {
       snprintf(g_msg, sizeof g_msg, "%s %d/%d", op, success_count, path_count);
     }
     g_msg_type = MSG_TYPE_SUCCESS;
-
-    const char *base = strrchr(g_clipboard_paths[0], '/');
-    strlcpy(g_cursor.name, base ? base + 1 : g_clipboard_paths[0], sizeof g_cursor.name);
+    strlcpy(g_cursor.name, first_resolved_name, sizeof g_cursor.name);
     return true;
   }
   return false;

@@ -15,11 +15,11 @@
 * Remember cursor position in right column for all directories (it's currently reset when moving up/down)
 * Move cursor to new file/dir after commands, touch/mkdir/etc
 * Show progress for copy/move
-* Handle collision with existing files when pasting after copy/move
 * Ability to write to log file what is happening while running for debugging
 * Support running commands with fish shell, instead of falling back on bash
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format
+* 'dupfilefmt' config option to change the format of file/folder paste collisions
 * Consider implementing scrollable pager for long command output instead of capping it
 * Investigate supporting image previews
 * Support truecolor in preview and command output for programs like `bat` (set TB_OPT_ATTR_W)
