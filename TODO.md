@@ -17,7 +17,6 @@
 * Show progress for copy/move
 * Handle collision with existing files when pasting after copy/move
 * Ability to write to log file what is happening while running for debugging
-* When renaming file with extension, put cursor right before extension instead of end
 * Support running commands with fish shell, instead of falling back on bash
 * 'smartcase' config option (if pattern has uppercase, treat as case-sensitive)
 * 'timefmt' config option to change status bar date/time format

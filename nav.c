@@ -100,6 +100,9 @@ static char *nav_get_prompt_input(const char *prompt, const char *initial) {
   static char buf[4096];
   strlcpy(buf, initial, sizeof buf);
   int cursor = strlen(buf);
+  char *dot = strrchr(buf, '.');
+  if (dot && dot != buf && dot[1] != '\0')
+    cursor = (int)(dot - buf);
   int len = cursor;
 
   while (1) {
